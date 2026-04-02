@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PupLife — Inscription (Étape 2)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="card">
+
+      <!-- Logo -->
+      <div class="logo-block">
+        <img src="logo.png" alt="PupLife Logo" class="logo-img" />
+        <h1 class="logo">LUMI</h1>
+      </div>
+
+      <!-- Titre formulaire -->
+      <p class="form-sub">Parlons un peu de vous</p>
+
+      <!-- Messages flash -->
+      <div id="flash" class="flash hidden"></div>
+
+      <!-- Formulaire -->
+      <form id="proprietaireForm" novalidate>
+
+        <!-- Prénom -->
+        <div class="field-group">
+          <label for="prenom">Prénom <span class="required">*</span></label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="prenom" name="prenom" placeholder="Ex : Marie" required />
+          </div>
+          <div class="field-error" id="err-prenom"></div>
+        </div>
+
+        <!-- Nom -->
+        <div class="field-group">
+          <label for="nom">Nom <span class="required">*</span></label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="nom" name="nom" placeholder="Ex : Dupont" required />
+          </div>
+          <div class="field-error" id="err-nom"></div>
+        </div>
+
+        <!-- Téléphone -->
+        <div class="field-group">
+          <label for="telephone">Téléphone <span class="required">*</span></label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-phone"></i>
+            <input type="tel" id="telephone" name="telephone" placeholder="06 12 34 56 78" autocomplete="tel" required />
+          </div>
+          <div class="field-error" id="err-telephone"></div>
+        </div>
+
+        <!-- Ville -->
+        <div class="field-group">
+          <label for="ville">Ville <span class="required">*</span></label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-map-pin"></i>
+            <input type="text" id="ville" name="ville" placeholder="Ex : Lyon" required />
+          </div>
+          <div class="field-error" id="err-ville"></div>
+        </div>
+
+        <!-- Boutons navigation -->
+        <div class="button-group">
+          <button type="button" class="btn-secondary" id="btnBack">← Retour</button>
+          <button type="submit" class="btn-submit" id="submitBtn">
+            <span class="btn-text">Continuer →</span>
+            <span class="btn-loader hidden" id="btnLoader">⏳ Traitement…</span>
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  <script src="proprietaire.js"></script>
+</body>
+</html>

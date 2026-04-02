@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PupLife — Inscription</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="card">
+
+      <!-- Logo -->
+      <div class="logo-block">
+        <img src="logo.png" alt="PupLife Logo" class="logo-img" />
+        <h1 class="logo">LUMI</h1>
+      </div>
+
+      <p class="form-sub">Commençons par présenter votre compagnon</p>
+
+      <!-- Messages flash -->
+      <div id="flash" class="flash hidden"></div>
+
+      <!-- Formulaire -->
+      <form id="inscriptionForm" novalidate>
+
+        <!-- Nom du chien -->
+        <div class="field-group">
+          <label for="chien_nom">Nom de votre chien <span class="required">*</span></label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-dog"></i>
+            <input type="text" id="chien_nom" name="chien_nom" placeholder="Ex : Rex" required />
+          </div>
+          <div class="field-error" id="err-chien_nom"></div>
+        </div>
+
+        <!-- Email -->
+        <div class="field-group">
+          <label for="email">Adresse e-mail <span class="required">*</span></label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-envelope"></i>
+            <input type="email" id="email" name="email" placeholder="vous@exemple.fr" autocomplete="email" required />
+          </div>
+          <div class="field-error" id="err-email"></div>
+        </div>
+
+        <!-- Mot de passe -->
+        <div class="field-group">
+          <label for="mot_de_passe">Mot de passe <span class="required">*</span></label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="mot_de_passe" name="mot_de_passe" placeholder="8 caractères minimum" required />
+            <button type="button" class="toggle-pwd" id="togglePwd" aria-label="Afficher le mot de passe"><i class="fa-solid fa-eye-slash"></i></button>
+          </div>
+          <div class="password-strength" id="pwdStrength"></div>
+          <div class="field-error" id="err-mot_de_passe"></div>
+        </div>
+
+        <!-- Confirmation mot de passe -->
+        <div class="field-group">
+          <label for="confirm_passe">Confirmer le mot de passe <span class="required">*</span></label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="confirm_passe" name="confirm_passe" placeholder="Répétez votre mot de passe" required />
+          </div>
+          <div class="field-error" id="err-confirm_passe"></div>
+        </div>
+
+        <!-- CGU -->
+        <div class="field-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="cgu" name="cgu" required />
+            <span class="checkmark"></span>
+            <span>J'accepte les <a href="#" class="link">conditions d'utilisation</a></span>
+          </label>
+          <div class="field-error" id="err-cgu"></div>
+        </div>
+
+        <!-- Bouton submit -->
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <span class="btn-text">Continuer →</span>
+          <span class="btn-loader hidden" id="btnLoader">⏳ Traitement…</span>
+        </button>
+
+      </form>
+
+      <p class="login-link">Déjà inscrit ? <a href="/login.html" class="link">Se connecter</a></p>
+
+    </div>
+  </div>
+
+  <script src="inscription.js"></script>
+</body>
+</html>

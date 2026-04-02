@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "prenom": "Lina",
+    "nom": "Delanoë",
+    "email": "corentin.salvi@gmail.com",
+    "telephone": "0783862334",
+    "ville": "Lyon",
+    "chien_nom": "Lumi",
+    "race": "Spitz",
+    "poids": 4.5,
+    "mot_de_passe": "$2b$12$8nvIYpnfD9MsENeoLwqrpuQyagMoYo38w.sa.ZOpuNDEMm03ojNq.",
+    "date_inscription": "2026-04-02T11:26:01",
+    "actif": true
+  }
+]
