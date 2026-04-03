@@ -138,7 +138,7 @@ form.addEventListener('submit', async (e) => {
       localStorage.removeItem('step2Data');
       // Rediriger après 2 secondes
       setTimeout(() => {
-        window.location.href = '/';
+        window.location.href = '/tableau-de-bord';
       }, 2000);
     } else {
       showFlash('error', result.message || 'Erreur lors de l\'inscription.');

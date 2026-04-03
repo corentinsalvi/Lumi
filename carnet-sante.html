@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" href="logo-fonce.png" type="image/png"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-header">
+      <a href="/tableau-de-bord" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+        <i class="fa-solid fa-arrow-left" style="color: #F9F1E2; font-size: 20px;"></i>
+        <span style="color: #F9F1E2; font-size: 18px; font-weight: 600;">Carnet de Santé</span>
+      </a>
+    </div>
+    <div class="header-action">
+      <i class="fa-solid fa-plus" onclick="openAddVaccineModal()"></i>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <div class="container">
+      <!-- Liste des vaccins -->
+      <section class="vaccines-list-section">
+        <h2 class="section-title">Historique des vaccins</h2>
+        <div id="vaccinesList" class="vaccines-list">
+          <!-- Les vaccins s'affichent ici -->
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Modal Ajouter Vaccin -->
+  <div id="addVaccineModal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeAddVaccineModal()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Ajouter un vaccin</h2>
+        <button class="modal-close" onclick="closeAddVaccineModal()">
+          <i class="fa-solid fa-times"></i>
+        </button>
+      </div>
+
+      <form id="vaccineForm" class="vaccine-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="vaccineName">Nom du vaccin</label>
+            <input type="text" id="vaccineName" placeholder="Ex: Rage, DHPP..." required />
+          </div>
+          <div class="form-group">
+            <label for="vaccineDate">Date</label>
+            <input type="date" id="vaccineDate" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="vaccineVet">Vétérinaire</label>
+            <input type="text" id="vaccineVet" placeholder="Nom du vétérinaire" />
+          </div>
+          <div class="form-group">
+            <label for="vaccineNotes">Remarques</label>
+            <input type="text" id="vaccineNotes" placeholder="Notes..." />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeAddVaccineModal()">Annuler</button>
+          <button type="submit" class="btn-add-vaccine">
+            <i class="fa-solid fa-plus"></i> Ajouter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/tableau-de-bord" class="nav-item"><i class="fa-solid fa-house"></i></a>
+    <a href="#search" class="nav-item"><i class="fa-solid fa-magnifying-glass"></i></a>
+    <a href="#add" class="nav-item"><i class="fa-solid fa-plus"></i></a>
+    <a href="/carnet-sante" class="nav-item active"><i class="fa-solid fa-book-medical"></i></a>
+    <a href="#profile" class="nav-item"><i class="fa-solid fa-user"></i></a>
+  </nav>
+
+  <script src="carnet-sante.js"></script>
+</body>
+</html>

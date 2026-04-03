@@ -1,5 +1,5 @@
 """
-PupLife — Serveur complet
+Odoggy — Serveur complet
 ==========================
 - Sert les fichiers statiques (HTML, CSS, JS)
 - Gère l'API d'inscription
@@ -43,13 +43,23 @@ CORS(app)
 
 @app.route("/")
 def index():
-    """Page d'accueil → index.html"""
-    return send_from_directory(BASE_DIR, "index.html")
+    """Page d'accueil → inscription.html"""
+    return send_from_directory(BASE_DIR, "inscription.html")
 
 @app.route("/inscription")
 def inscription_page():
     """Page d'inscription → inscription.html"""
     return send_from_directory(BASE_DIR, "inscription.html")
+
+@app.route("/tableau-de-bord")
+def tableau_de_bord():
+    """Tableau de bord → tableau-de-bord.html"""
+    return send_from_directory(BASE_DIR, "tableau-de-bord.html")
+
+@app.route("/carnet-sante")
+def carnet_sante():
+    """Carnet de santé → carnet-sante.html"""
+    return send_from_directory(BASE_DIR, "carnet-sante.html")
 
 @app.route("/<path:filename>")
 def static_files(filename):
@@ -263,7 +273,7 @@ def supprimer_inscrit(user_id: int):
 # ── Lancement ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 54)
-    print("  🐾  PupLife — Serveur complet")
+    print("  🐾  Odoggy — Serveur complet")
     print("=" * 54)
     print(f"  📂  Dossier servi  : {BASE_DIR}")
     print(f"  📄  Fichier JSON   : {DATA_FILE}")
