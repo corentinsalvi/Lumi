@@ -111,14 +111,21 @@ form.addEventListener('submit', async (e) => {
       // Stocker les infos utilisateur
       localStorage.setItem('currentUser', JSON.stringify({
         id: result.id,
+        username: result.username,
         email: result.email,
         prenom: result.prenom,
         nom: result.nom,
         chien_nom: result.chien_nom,
+        race: result.race,
+        poids: result.poids,
+        telephone: result.telephone,
+        ville: result.ville,
+        dateNaissance: result.dateNaissance,
+        sexe: result.sexe,
       }));
       // Rediriger après 2 secondes
       setTimeout(() => {
-        window.location.href = '/tableau-de-bord.html';
+        window.location.href = '/tableau-de-bord';
       }, 2000);
     } else {
       showFlash('error', result.message || 'Erreur lors de la connexion.');

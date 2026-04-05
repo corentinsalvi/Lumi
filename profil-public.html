@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" href="logo-fonce.png" type="image/png"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .profile-public-container {
+      padding: 20px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .profile-public-card {
+      background: #FFFFFF;
+      border-radius: var(--radius);
+      padding: 32px 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .profile-public-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 4px solid var(--gold);
+      margin: 0 auto 16px;
+      object-fit: cover;
+      background: var(--cream);
+    }
+
+    .profile-public-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 12px 0 4px;
+      font-family: 'Fraunces', serif;
+    }
+
+    .profile-public-username {
+      font-size: 14px;
+      color: var(--gold);
+      margin: 4px 0 12px 0;
+      font-weight: 500;
+    }
+
+    .profile-public-info {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .profile-public-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+
+    .follow-button-section {
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-follow {
+      flex: 1;
+      background: var(--gold);
+      color: #FFFFFF;
+      border: none;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .btn-follow:hover {
+      background: var(--gold-dark);
+    }
+
+    .btn-follow.following {
+      background: var(--border);
+      color: var(--ink);
+    }
+
+    .btn-message {
+      flex: 1;
+      background: var(--sky);
+      color: #FFFFFF;
+      border: none;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .btn-message:hover {
+      background: #5a9fb5;
+    }
+
+    .posts-section {
+      margin-top: 20px;
+    }
+
+    .posts-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ink);
+      margin: 20px 0 16px 0;
+      padding: 0 20px;
+    }
+
+    .post-card {
+      background: #FFFFFF;
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+      margin-left: 0;
+      margin-right: 0;
+    }
+
+    .post-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .post-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--cream);
+      object-fit: cover;
+    }
+
+    .post-author-info {
+      flex: 1;
+    }
+
+    .post-author-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+      margin: 0;
+    }
+
+    .post-author-username {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .post-date {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .post-content {
+      font-size: 14px;
+      color: var(--ink);
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .post-image {
+      width: 100%;
+      border-radius: var(--radius-sm);
+      margin-bottom: 12px;
+      object-fit: cover;
+    }
+
+    .post-actions {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+      color: var(--muted);
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .post-action {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s ease;
+    }
+
+    .post-action:hover {
+      color: var(--gold);
+    }
+
+    .no-posts {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+
+    .no-posts i {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-header">
+      <a href="/recherche" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+        <i class="fa-solid fa-arrow-left" style="color: #F9F1E2; font-size: 20px;"></i>
+        <span style="color: #F9F1E2; font-size: 18px; font-weight: 600;">Profil</span>
+      </a>
+    </div>
+    <div class="header-action"></div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <div class="profile-public-container">
+      
+      <!-- Profile Card -->
+      <div class="profile-public-card">
+        <img id="publicProfileAvatar" src="logo-fonce.png" alt="Profil" class="profile-public-avatar" />
+        
+        <h1 id="publicDogName" class="profile-public-name">Chien</h1>
+        <p id="publicDogUsername" class="profile-public-username">@user_xxxxx</p>
+        
+        <div id="publicProfileDetails" class="profile-public-info">
+          <span id="publicDogRace">Race</span> • <span id="publicDogAge">Âge</span><br>
+          <span id="publicOwnerName">Propriétaire</span>
+        </div>
+
+        <!-- Stats -->
+        <div class="profile-public-stats">
+          <div class="stat-item">
+            <div class="stat-number" id="publicPostsCount">0</div>
+            <div class="stat-label">Posts</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="publicFollowersCount">0</div>
+            <div class="stat-label">Abonnés</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="publicFollowingCount">0</div>
+            <div class="stat-label">Abonnements</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Follow Button -->
+      <div class="follow-button-section">
+        <button class="btn-follow" id="followBtn" onclick="toggleFollow()">Suivre</button>
+        <button class="btn-message" onclick="sendMessage()">Message</button>
+      </div>
+
+      <!-- Posts Section -->
+      <h2 class="posts-title">Posts</h2>
+      <div id="postsContainer">
+        <div class="no-posts">
+          <i class="fa-solid fa-image"></i>
+          <p>Aucun post</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/tableau-de-bord" class="nav-item"><i class="fa-solid fa-house"></i></a>
+    <a href="/recherche" class="nav-item"><i class="fa-solid fa-magnifying-glass"></i></a>
+    <a href="#add" class="nav-item"><i class="fa-solid fa-plus"></i></a>
+    <a href="/carnet-sante" class="nav-item"><i class="fa-solid fa-book-medical"></i></a>
+    <a href="/profil" class="nav-item"><i class="fa-solid fa-user"></i></a>
+  </nav>
+
+  <script src="profil-public.js"></script>
+</body>
+</html>

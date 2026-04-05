@@ -50,6 +50,32 @@
           <div class="field-error" id="err-poids"></div>
         </div>
 
+        <!-- Date de naissance -->
+        <div class="field-group">
+          <label for="dateNaissance">Date de naissance <span class="required">*</span></label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-calendar"></i>
+            <input type="date" id="dateNaissance" name="dateNaissance" required />
+          </div>
+          <div class="field-error" id="err-dateNaissance"></div>
+        </div>
+
+        <!-- Sexe -->
+        <div class="field-group">
+          <label>Sexe <span class="required">*</span></label>
+          <div style="display: flex; gap: 12px; margin-top: 8px;">
+            <label style="display: flex; align-items: center; cursor: pointer; flex: 1; gap: 8px;">
+              <input type="radio" name="sexe" value="male" id="sexe-male" required />
+              <span style="font-size: 14px;">♂️ Mâle</span>
+            </label>
+            <label style="display: flex; align-items: center; cursor: pointer; flex: 1; gap: 8px;">
+              <input type="radio" name="sexe" value="femelle" id="sexe-femelle" required />
+              <span style="font-size: 14px;">♀️ Femelle</span>
+            </label>
+          </div>
+          <div class="field-error" id="err-sexe"></div>
+        </div>
+
         <!-- Boutons navigation -->
         <div class="button-group">
           <button type="button" class="btn-secondary" id="btnBack">← Retour</button>

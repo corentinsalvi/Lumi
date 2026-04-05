@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" href="logo-fonce.png" type="image/png"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .profile-container {
+      padding: 20px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .profile-card {
+      background: #FFFFFF;
+      border-radius: var(--radius);
+      padding: 32px 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .profile-avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 4px solid var(--gold);
+      margin: 0 auto 16px;
+      object-fit: cover;
+      background: var(--cream);
+    }
+
+    .profile-name {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 12px 0 4px;
+      font-family: 'Fraunces', serif;
+    }
+
+    .profile-info {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .profile-badge {
+      display: inline-block;
+      background: var(--gold-light);
+      color: var(--gold-dark);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin: 12px 0;
+    }
+
+    .profile-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 24px 0;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+
+    .profile-menu {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .profile-menu-item {
+      background: #FFFFFF;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .profile-menu-item:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .menu-item-content {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .menu-item-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .menu-item-icon.dogs {
+      background: #FFE5CC;
+      color: #E67E22;
+    }
+
+    .menu-item-icon.notifications {
+      background: #FFF4CC;
+      color: #F39C12;
+    }
+
+    .menu-item-icon.premium {
+      background: #FFE5E5;
+      color: #E74C3C;
+    }
+
+    .menu-item-text h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ink);
+      margin: 0 0 4px 0;
+    }
+
+    .menu-item-text p {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .menu-arrow {
+      color: var(--border);
+      font-size: 18px;
+    }
+
+    .owner-info {
+      background: #F9F1E2;
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--ink);
+      margin-top: 20px;
+    }
+
+    .owner-info strong {
+      color: var(--ink);
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-header">
+      <a href="/tableau-de-bord" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+        <i class="fa-solid fa-arrow-left" style="color: #F9F1E2; font-size: 20px;"></i>
+        <span style="color: #F9F1E2; font-size: 18px; font-weight: 600;">Profil</span>
+      </a>
+    </div>
+    <div class="header-action">
+      <i class="fa-solid fa-gear" onclick="editProfile()"></i>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <div class="profile-container">
+      
+      <!-- Profile Card -->
+      <div class="profile-card">
+        <img id="profileAvatar" src="logo-fonce.png" alt="Profil" class="profile-avatar" />
+        
+        <h1 id="dogName" class="profile-name">Luna</h1>
+        <p id="dogUsername" style="font-size: 14px; color: var(--gold); margin: 4px 0 12px 0; font-weight: 500;">@user_xxxxxxx</p>
+        
+        <div id="profileDetails" class="profile-info">
+          <span id="dogRace">Race</span> • <span id="dogAge">Âge</span> • <span id="dogSex">Sexe</span><br>
+          <span id="ownerName">Propriétaire</span>
+        </div>
+
+        <!-- Stats -->
+        <div class="profile-stats">
+          <div class="stat-item">
+            <div class="stat-number" id="postsCount">3</div>
+            <div class="stat-label">Posts</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="rappelsCount">2</div>
+            <div class="stat-label">Rappels</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="abonnementsCount">0</div>
+            <div class="stat-label">Abonnements</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="abonnesCount">0</div>
+            <div class="stat-label">Abonnés</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Menu Items -->
+      <ul class="profile-menu">
+        <li class="profile-menu-item" onclick="goToNotifications()">
+          <a href="#" class="menu-item-content" onclick="return false;">
+            <div class="menu-item-icon notifications">
+              <i class="fa-solid fa-bell"></i>
+            </div>
+            <div class="menu-item-text">
+              <h3>Notifications</h3>
+              <p>Rappels vaccins activés</p>
+            </div>
+          </a>
+          <span class="menu-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+        </li>
+
+        <li class="profile-menu-item" onclick="goToPremium()">
+          <a href="#" class="menu-item-content" onclick="return false;">
+            <div class="menu-item-icon premium">
+              <i class="fa-solid fa-star"></i>
+            </div>
+            <div class="menu-item-text">
+              <h3>PupLife Premium</h3>
+              <p>Passez au Premium</p>
+            </div>
+          </a>
+          <span class="menu-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+        </li>
+      </ul>
+
+      <!-- Owner Info -->
+      <div class="owner-info">
+        <strong>Informations du propriétaire :</strong><br>
+        <span id="ownerEmail">Email: email@example.com</span><br>
+        <span id="ownerPhone">Tél: +33 7 XX XX XX XX</span><br>
+        <span id="ownerCity">Ville: Lyon</span>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/tableau-de-bord" class="nav-item"><i class="fa-solid fa-house"></i></a>
+    <a href="/recherche" class="nav-item"><i class="fa-solid fa-magnifying-glass"></i></a>
+    <a href="#add" class="nav-item"><i class="fa-solid fa-plus"></i></a>
+    <a href="/carnet-sante" class="nav-item"><i class="fa-solid fa-book-medical"></i></a>
+    <a href="/profil" class="nav-item active"><i class="fa-solid fa-user"></i></a>
+  </nav>
+
+  <script src="profil.js"></script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" href="logo-fonce.png" type="image/png"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .search-container {
+      padding: 20px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .search-box {
+      background: #FFFFFF;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .search-box input {
+      flex: 1;
+      border: none;
+      font-size: 16px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      background: transparent;
+    }
+
+    .search-box input::placeholder {
+      color: var(--muted);
+    }
+
+    .search-box i {
+      color: var(--gold);
+      font-size: 18px;
+    }
+
+    .user-card {
+      background: #FFFFFF;
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .user-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .user-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 2px solid var(--gold-light);
+      object-fit: cover;
+      background: var(--cream);
+      flex-shrink: 0;
+    }
+
+    .user-info {
+      flex: 1;
+    }
+
+    .user-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ink);
+      margin: 0 0 4px 0;
+    }
+
+    .user-username {
+      font-size: 13px;
+      color: var(--gold);
+      margin: 0 0 4px 0;
+      font-weight: 500;
+    }
+
+    .user-dog {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .user-follow-btn {
+      background: var(--gold);
+      color: #FFFFFF;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .user-follow-btn:hover {
+      background: var(--gold-dark);
+    }
+
+    .user-follow-btn.following {
+      background: var(--border);
+      color: var(--ink);
+    }
+
+    .search-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+
+    .search-empty i {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+
+    .search-results {
+      margin-top: 20px;
+    }
+
+    .search-results h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+      margin: 16px 0 12px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-header">
+      <a href="/tableau-de-bord" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+        <i class="fa-solid fa-arrow-left" style="color: #F9F1E2; font-size: 20px;"></i>
+        <span style="color: #F9F1E2; font-size: 18px; font-weight: 600;">Recherche</span>
+      </a>
+    </div>
+    <div class="header-action"></div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <div class="search-container">
+      
+      <!-- Search Box -->
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="Chercher un utilisateur, un chien..."
+          autocomplete="off"
+        />
+      </div>
+
+      <!-- Search Results -->
+      <div id="searchResults" class="search-results hidden">
+        <h3 id="resultsTitle">Résultats</h3>
+        <div id="resultsList"></div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="searchEmpty" class="search-empty">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <p>Commencez à taper pour rechercher</p>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/tableau-de-bord" class="nav-item"><i class="fa-solid fa-house"></i></a>
+    <a href="/recherche" class="nav-item active"><i class="fa-solid fa-magnifying-glass"></i></a>
+    <a href="#add" class="nav-item"><i class="fa-solid fa-plus"></i></a>
+    <a href="/carnet-sante" class="nav-item"><i class="fa-solid fa-book-medical"></i></a>
+    <a href="/profil" class="nav-item"><i class="fa-solid fa-user"></i></a>
+  </nav>
+
+  <script src="recherche.js"></script>
+</body>
+</html>

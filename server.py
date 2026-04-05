@@ -18,6 +18,7 @@ import json
 import re
 import hashlib
 import secrets
+import string
 from datetime import datetime
 from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory
@@ -56,10 +57,25 @@ def tableau_de_bord():
     """Tableau de bord → tableau-de-bord.html"""
     return send_from_directory(BASE_DIR, "tableau-de-bord.html")
 
+@app.route("/profil")
+def profil_page():
+    """Page de profil → profil.html"""
+    return send_from_directory(BASE_DIR, "profil.html")
+
+@app.route("/recherche")
+def recherche_page():
+    """Page de recherche → recherche.html"""
+    return send_from_directory(BASE_DIR, "recherche.html")
+
 @app.route("/carnet-sante")
 def carnet_sante():
     """Carnet de santé → carnet-sante.html"""
     return send_from_directory(BASE_DIR, "carnet-sante.html")
+
+@app.route("/profil-public")
+def profil_public():
+    """Page de profil public → profil-public.html"""
+    return send_from_directory(BASE_DIR, "profil-public.html")
 
 @app.route("/<path:filename>")
 def static_files(filename):
@@ -117,6 +133,15 @@ def telephone_valide(tel: str) -> bool:
         return True
     return bool(re.match(r"^(\+33|0)[0-9 .\-]{8,14}$", tel.strip()))
 
+def generate_unique_username(inscrits: list) -> str:
+    """Générer un username unique au format user_XXXXXXX"""
+    existing_usernames = {u.get("username") for u in inscrits if "username" in u}
+    while True:
+        random_part = ''.join(secrets.choice(string.digits + string.ascii_lowercase) for _ in range(7))
+        username = f"user_{random_part}"
+        if username not in existing_usernames:
+            return username
+
 
 # ── API inscription ───────────────────────────────────────────────────────────
 
@@ -168,6 +193,25 @@ def inscription():
     except (ValueError, TypeError):
         erreurs.append("Le poids doit être un nombre valide.")
 
+    # Date de naissance
+    date_naissance = (data.get("dateNaissance") or "").strip()
+    if not date_naissance:
+        erreurs.append("La date de naissance est obligatoire.")
+    else:
+        try:
+            date_obj = datetime.fromisoformat(date_naissance)
+            if date_obj > datetime.now():
+                erreurs.append("La date de naissance ne peut pas être dans le futur.")
+        except ValueError:
+            erreurs.append("Format de date invalide.")
+
+    # Sexe
+    sexe = (data.get("sexe") or "").strip().lower()
+    if not sexe:
+        erreurs.append("Le sexe du chien est obligatoire.")
+    elif sexe not in ["male", "femelle"]:
+        erreurs.append("Le sexe doit être 'male' ou 'femelle'.")
+
     mot_de_passe = data.get("mot_de_passe") or ""
     if not mot_de_passe or len(mot_de_passe) < 8:
         erreurs.append("Le mot de passe doit contenir au moins 8 caractères.")
@@ -182,8 +226,12 @@ def inscription():
             "message": f"L'adresse {email} est déjà utilisée."
         }), 409
 
+    # Générer un username unique
+    username = generate_unique_username(inscrits)
+
     nouvel_inscrit = {
         "id":               len(inscrits) + 1,
+        "username":         username,
         "prenom":           prenom,
         "nom":              nom,
         "email":            email,
@@ -192,6 +240,8 @@ def inscription():
         "chien_nom":        chien_nom,
         "race":             race,
         "poids":            poids,
+        "dateNaissance":    date_naissance,
+        "sexe":             sexe,
         "mot_de_passe":     hash_password(mot_de_passe),
         "date_inscription": datetime.now().isoformat(timespec="seconds"),
         "actif":            True,
@@ -200,12 +250,23 @@ def inscription():
     inscrits.append(nouvel_inscrit)
     save_inscrits(inscrits)
 
-    print(f"[{datetime.now():%H:%M:%S}] ✅ Nouvel inscrit : {prenom} {nom} ({email}) — chien : {chien_nom} ({race}, {poids}kg)")
+    print(f"[{datetime.now():%H:%M:%S}] ✅ Nouvel inscrit : {prenom} {nom} ({email}) — username: {username} — chien : {chien_nom} ({race}, {poids}kg, {sexe}, né le {date_naissance})")
 
     return jsonify({
         "success": True,
         "message": f"Bienvenue {prenom} ! 🐾",
         "id":      nouvel_inscrit["id"],
+        "username": username,
+        "email":   email,
+        "prenom":  prenom,
+        "nom":     nom,
+        "telephone": telephone,
+        "ville":   ville,
+        "chien_nom": chien_nom,
+        "race":    race,
+        "poids":   poids,
+        "dateNaissance": date_naissance,
+        "sexe":    sexe,
     }), 201
 
 
@@ -245,11 +306,37 @@ def login():
         "success": True,
         "message": f"Bienvenue {user['prenom']} ! 🐾",
         "id":      user["id"],
+        "username": user.get("username", ""),
         "email":   user["email"],
         "prenom":  user["prenom"],
         "nom":     user["nom"],
+        "telephone": user.get("telephone", ""),
+        "ville":   user.get("ville", ""),
         "chien_nom": user["chien_nom"],
+        "race":    user.get("race", ""),
+        "poids":   user.get("poids", 0),
+        "dateNaissance": user.get("dateNaissance", ""),
+        "sexe":    user.get("sexe", ""),
     }), 200
+
+
+@app.route("/api/user-profile", methods=["GET"])
+def user_profile():
+    """Récupère le profil de l'utilisateur actuellement connecté"""
+    user_id = request.args.get("id", type=int)
+    
+    if not user_id:
+        return jsonify({"success": False, "message": "ID utilisateur manquant."}), 400
+    
+    inscrits = load_inscrits()
+    user = next((u for u in inscrits if u["id"] == user_id), None)
+    
+    if not user:
+        return jsonify({"success": False, "message": "Utilisateur non trouvé."}), 404
+    
+    # Retourner les données sans le mot de passe
+    user_data = {k: v for k, v in user.items() if k != "mot_de_passe"}
+    return jsonify({"success": True, "data": user_data}), 200
 
 
 @app.route("/api/inscrits", methods=["GET"])
@@ -270,6 +357,38 @@ def supprimer_inscrit(user_id: int):
     return jsonify({"success": True, "message": f"Inscrit #{user_id} supprimé."})
 
 
+@app.route("/api/search", methods=["GET"])
+def search_users():
+    """Rechercher des utilisateurs par username, nom du chien ou nom du propriétaire"""
+    query = (request.args.get("q") or "").strip().lower()
+    
+    if not query or len(query) < 2:
+        return jsonify({"success": False, "message": "Requête de recherche trop courte."}), 400
+    
+    inscrits = load_inscrits()
+    results = []
+    
+    for user in inscrits:
+        # Vérifier si la requête correspond à l'username, chien_nom, prenom ou nom
+        if (
+            query in user.get("username", "").lower() or
+            query in user.get("chien_nom", "").lower() or
+            query in user.get("prenom", "").lower() or
+            query in user.get("nom", "").lower()
+        ):
+            results.append({
+                "id": user["id"],
+                "username": user.get("username", ""),
+                "chien_nom": user.get("chien_nom", "Chien"),
+                "race": user.get("race", "Race inconnue"),
+                "prenom": user.get("prenom", ""),
+                "nom": user.get("nom", ""),
+                "sexe": user.get("sexe", ""),
+            })
+    
+    return jsonify({"success": True, "results": results}), 200
+
+
 # ── Lancement ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 54)
@@ -287,4 +406,4 @@ if __name__ == "__main__":
     print("    GET    /api/inscrits         → lister (sans mdp)")
     print("    DELETE /api/inscrits/<id>    → supprimer")
     print("=" * 54)
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", debug=True, port=5000)

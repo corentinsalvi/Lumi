@@ -7,6 +7,9 @@ const vaccineVet = document.getElementById('vaccineVet');
 const vaccineNotes = document.getElementById('vaccineNotes');
 const addVaccineModal = document.getElementById('addVaccineModal');
 
+// ── Utilisateur connecté ────────────────────────────────────────────────────
+let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
 // ── Gestion du Modal ────────────────────────────────────────────────────
 function openAddVaccineModal() {
   addVaccineModal.classList.remove('hidden');
@@ -34,13 +37,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Charger les vaccins depuis localStorage ─────────────────────────────
 function loadVaccines() {
-  const saved = localStorage.getItem('vaccines');
+  const vaccinesKey = 'vaccines_' + currentUser.id;
+  const saved = localStorage.getItem(vaccinesKey);
   return saved ? JSON.parse(saved) : [];
 }
 
 // ── Sauvegarder les vaccins ─────────────────────────────────────────────
 function saveVaccines(vaccines) {
-  localStorage.setItem('vaccines', JSON.stringify(vaccines));
+  const vaccinesKey = 'vaccines_' + currentUser.id;
+  localStorage.setItem(vaccinesKey, JSON.stringify(vaccines));
+  updateVaccineCountInProfile();
+}
+
+// ── Mettre à jour le compteur de vaccins dans le profil ─────────────────
+function updateVaccineCountInProfile() {
+  const vaccines = loadVaccines();
+  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  if (currentUser.id) {
+    currentUser.vaccins = vaccines.length;
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    // Envoyer un événement personnalisé pour mettre à jour le profil en temps réel
+    window.dispatchEvent(new CustomEvent('vaccinesUpdated', { detail: { count: vaccines.length } }));
+  }
 }
 
 // ── Ajouter un vaccin ───────────────────────────────────────────────────
@@ -60,8 +78,9 @@ form.addEventListener('submit', (e) => {
   vaccines.push(newVaccine);
   saveVaccines(vaccines);
 
-  // Réinitialiser le formulaire
+  // Réinitialiser et fermer le formulaire
   form.reset();
+  closeAddVaccineModal();
   displayVaccines();
 });
 
