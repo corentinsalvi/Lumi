@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" href="logo-fonce.png" type="image/png"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    /* ── Feed Layout ──────────────────────────────────────────────── */
+    .feed-container {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 16px 0;
+    }
+
+    .feed-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .feed-empty i {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.4;
+    }
+
+    .feed-empty p {
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
+
+    .feed-empty a {
+      color: var(--gold-dark);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    /* ── Post Card ────────────────────────────────────────────────── */
+    .post-card {
+      background: #FFFFFF;
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .post-card-header {
+      display: flex;
+      align-items: center;
+      padding: 14px 16px;
+      gap: 12px;
+    }
+
+    .post-card-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--gold-light);
+      background: var(--cream);
+    }
+
+    .post-card-user {
+      flex: 1;
+    }
+
+    .post-card-username {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--ink);
+      margin: 0;
+    }
+
+    .post-card-location {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 2px 0 0 0;
+    }
+
+    .post-card-location i {
+      margin-right: 4px;
+    }
+
+    .post-card-menu {
+      background: none;
+      border: none;
+      font-size: 18px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    /* Image */
+    .post-card-image {
+      width: 100%;
+      max-height: 500px;
+      object-fit: cover;
+      display: block;
+      background: var(--cream);
+    }
+
+    /* Actions */
+    .post-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 16px 8px;
+    }
+
+    .post-action-btn {
+      background: none;
+      border: none;
+      font-size: 22px;
+      color: var(--ink);
+      cursor: pointer;
+      transition: transform 0.15s, color 0.15s;
+      padding: 0;
+    }
+
+    .post-action-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .post-action-btn.liked {
+      color: #E74C3C;
+    }
+
+    /* Likes */
+    .post-card-likes {
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    /* Caption */
+    .post-card-caption {
+      padding: 6px 16px 4px;
+      font-size: 14px;
+      color: var(--ink);
+      line-height: 1.5;
+    }
+
+    .post-card-caption strong {
+      font-weight: 700;
+      margin-right: 6px;
+    }
+
+    /* Timestamp */
+    .post-card-time {
+      padding: 4px 16px 14px;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    /* ── Loader ───────────────────────────────────────────────────── */
+    .feed-loader {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+    }
+
+    .feed-loader i {
+      font-size: 24px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── Modal Likers ────────────────────────────────────────────── */
+    .likers-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 1000;
+      justify-content: center;
+      align-items: flex-end;
+    }
+
+    .likers-overlay.open {
+      display: flex;
+    }
+
+    .likers-modal {
+      background: #fff;
+      width: 100%;
+      max-width: 500px;
+      max-height: 60vh;
+      border-radius: 20px 20px 0 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.25s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .likers-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .likers-header h3 {
+      margin: 0;
+      font-size: 16px;
+      color: var(--ink);
+    }
+
+    .likers-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .likers-list {
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .liker-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .liker-item:hover {
+      background: var(--cream);
+    }
+
+    .liker-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--gold-light);
+      background: var(--cream);
+    }
+
+    .liker-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--ink);
+    }
+
+    .likers-empty {
+      text-align: center;
+      padding: 30px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-header">
+      <img src="logo-clair.png" alt="Logo" class="logo-header-img" />
+    </div>
+    <div class="header-action">
+      <a href="/nouveau-post" style="text-decoration: none;">
+        <i class="fa-solid fa-plus"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <div class="feed-container" id="feedContainer">
+      <div class="feed-loader" id="feedLoader">
+        <i class="fa-solid fa-spinner"></i>
+        <p>Chargement du feed...</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/feed" class="nav-item active"><i class="fa-solid fa-house"></i></a>
+    <a href="/recherche" class="nav-item"><i class="fa-solid fa-magnifying-glass"></i></a>
+    <a href="/nouveau-post" class="nav-item"><i class="fa-solid fa-plus"></i></a>
+    <a href="/carnet-sante" class="nav-item"><i class="fa-solid fa-book-medical"></i></a>
+    <a href="/profil" class="nav-item"><i class="fa-solid fa-user"></i></a>
+  </nav>
+
+  <script src="feed.js"></script>
+
+  <!-- Modal Likers -->
+  <div class="likers-overlay" id="likersOverlay" onclick="closeLikersModal(event)">
+    <div class="likers-modal">
+      <div class="likers-header">
+        <h3>J'aime</h3>
+        <button class="likers-close" onclick="closeLikersModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="likers-list" id="likersList"></div>
+    </div>
+  </div>
+</body>
+</html>

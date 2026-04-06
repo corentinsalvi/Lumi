@@ -15,7 +15,9 @@ Puis ouvrir : http://localhost:5000
 """
 
 import json
+import os
 import re
+import uuid
 import hashlib
 import secrets
 import string
@@ -33,10 +35,13 @@ except ImportError:
     print("   Pour un hash sécurisé : pip install bcrypt")
 
 # ── Config ───────────────────────────────────────────────────────────────────
-BASE_DIR  = Path(__file__).parent
-DATA_FILE = BASE_DIR / "inscrits.json"
+BASE_DIR    = Path(__file__).parent
+DATA_FILE   = BASE_DIR / "inscrits.json"
+UPLOAD_DIR  = BASE_DIR / "static" / "uploads"
+ALLOWED_EXT = {".jpg", ".jpeg", ".png"}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 Mo
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=str(BASE_DIR / "static"))
 CORS(app)
 
 
@@ -54,8 +59,8 @@ def inscription_page():
 
 @app.route("/tableau-de-bord")
 def tableau_de_bord():
-    """Tableau de bord → tableau-de-bord.html"""
-    return send_from_directory(BASE_DIR, "tableau-de-bord.html")
+    """Tableau de bord → redirige vers feed.html"""
+    return send_from_directory(BASE_DIR, "feed.html")
 
 @app.route("/profil")
 def profil_page():
@@ -76,6 +81,16 @@ def carnet_sante():
 def profil_public():
     """Page de profil public → profil-public.html"""
     return send_from_directory(BASE_DIR, "profil-public.html")
+
+@app.route("/feed")
+def feed_page():
+    """Page feed → feed.html"""
+    return send_from_directory(BASE_DIR, "feed.html")
+
+@app.route("/nouveau-post")
+def nouveau_post_page():
+    """Page création de post → nouveau-post.html"""
+    return send_from_directory(BASE_DIR, "nouveau-post.html")
 
 @app.route("/<path:filename>")
 def static_files(filename):
@@ -98,6 +113,13 @@ def load_inscrits() -> list:
 def save_inscrits(inscrits: list) -> None:
     with DATA_FILE.open("w", encoding="utf-8") as f:
         json.dump(inscrits, f, ensure_ascii=False, indent=2)
+
+
+def allowed_file(filename: str) -> bool:
+    """Vérifie que l'extension du fichier est autorisée."""
+    ext = os.path.splitext(filename)[1].lower()
+    return ext in ALLOWED_EXT
+
 
 def hash_password(password: str) -> str:
     if USE_BCRYPT:
@@ -317,6 +339,8 @@ def login():
         "poids":   user.get("poids", 0),
         "dateNaissance": user.get("dateNaissance", ""),
         "sexe":    user.get("sexe", ""),
+        "post":    user.get("post", []),
+        "profil_url": user.get("profil_url", ""),
     }), 200
 
 
@@ -439,6 +463,312 @@ def search_users():
     return jsonify({"success": True, "results": results}), 200
 
 
+# ── API Upload d'image / Posts ───────────────────────────────────────────────
+
+@app.route("/api/posts", methods=["POST"])
+def create_post():
+    """Créer un post avec upload d'image sécurisé.
+
+    Attend un formulaire multipart avec :
+      - user_id  (int)   : identifiant de l'utilisateur
+      - caption  (str)   : légende du post (optionnel)
+      - location (str)   : lieu (optionnel)
+      - image    (file)  : fichier image (.jpg, .jpeg, .png)
+    """
+    # ── Récupérer l'user_id ─────────────────────────────────────────────
+    user_id = request.form.get("user_id", type=int)
+    if not user_id:
+        return jsonify({"success": False, "message": "user_id manquant."}), 400
+
+    # Vérifier que l'utilisateur existe
+    inscrits = load_inscrits()
+    user = next((u for u in inscrits if u["id"] == user_id), None)
+    if not user:
+        return jsonify({"success": False, "message": "Utilisateur non trouvé."}), 404
+
+    caption  = (request.form.get("caption") or "").strip()
+    location = (request.form.get("location") or "").strip()
+
+    # ── Récupérer et valider l'image ───────────────────────────────────
+    image = request.files.get("image")
+    image_url = None
+
+    if image and image.filename:
+        # Vérifier l'extension
+        if not allowed_file(image.filename):
+            return jsonify({
+                "success": False,
+                "message": "Extension non autorisée. Seuls .jpg, .jpeg et .png sont acceptés."
+            }), 422
+
+        # Vérifier la taille (lire le contenu en mémoire)
+        image_data = image.read()
+        if len(image_data) > MAX_FILE_SIZE:
+            return jsonify({
+                "success": False,
+                "message": "Fichier trop volumineux (max 5 Mo)."
+            }), 413
+
+        # Générer un nom unique avec uuid
+        ext = os.path.splitext(image.filename)[1].lower()
+        unique_name = f"{uuid.uuid4().hex[:16]}{ext}"
+
+        # Créer le dossier utilisateur si nécessaire
+        user_upload_dir = UPLOAD_DIR / f"user_{user_id}"
+        os.makedirs(user_upload_dir, exist_ok=True)
+
+        # Sauvegarder le fichier
+        file_path = user_upload_dir / unique_name
+        with open(file_path, "wb") as f:
+            f.write(image_data)
+
+        # Chemin relatif pour l'URL
+        image_url = f"/static/uploads/user_{user_id}/{unique_name}"
+
+    # Un post doit avoir au moins une légende ou une image
+    if not caption and not image_url:
+        return jsonify({"success": False, "message": "Le post doit contenir du texte ou une image."}), 422
+
+    # ── Sauvegarder dans inscrits.json (champ post[]) ─────────────────
+    new_post = {
+        "post_id":   uuid.uuid4().hex,
+        "user_id":   user_id,
+        "username":  user.get("username", ""),
+        "chien_nom": user.get("chien_nom", ""),
+        "image_url": image_url,
+        "caption":   caption,
+        "location":  location,
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "likes":     0,
+        "comments":  0,
+    }
+    if "post" not in user:
+        user["post"] = []
+    user["post"].append(new_post)
+    save_inscrits(inscrits)
+
+    print(f"[{datetime.now():%H:%M:%S}] 📸 Nouveau post {new_post['post_id'][:8]} par @{user.get('username', '?')}" +
+          (f" avec image" if image_url else ""))
+
+    return jsonify({"success": True, "message": "Post créé !", "post": new_post}), 201
+
+
+@app.route("/api/posts", methods=["GET"])
+def get_posts():
+    """Récupérer les posts depuis inscrits.json, optionnellement filtrés par user_id."""
+    user_id = request.args.get("user_id", type=int)
+    inscrits = load_inscrits()
+
+    posts = []
+    for u in inscrits:
+        for p in u.get("post", []):
+            p["profil_url"] = u.get("profil_url", "")
+            posts.append(p)
+
+    if user_id:
+        posts = [p for p in posts if p.get("user_id") == user_id]
+
+    # Trier par date décroissante (plus récent en premier)
+    posts.sort(key=lambda p: p.get("timestamp", ""), reverse=True)
+
+    return jsonify({"success": True, "posts": posts}), 200
+
+
+@app.route("/api/posts/<post_id>", methods=["DELETE"])
+def delete_post(post_id: str):
+    """Supprimer un post et son image associée."""
+    inscrits = load_inscrits()
+    found_post = None
+    found_user = None
+
+    for u in inscrits:
+        for p in u.get("post", []):
+            if p.get("post_id") == post_id:
+                found_post = p
+                found_user = u
+                break
+        if found_post:
+            break
+
+    if not found_post:
+        return jsonify({"success": False, "message": "Post introuvable."}), 404
+
+    # Supprimer l'image du disque si elle existe
+    if found_post.get("image_url"):
+        image_path = BASE_DIR / found_post["image_url"].lstrip("/")
+        if image_path.exists():
+            image_path.unlink()
+
+    found_user["post"] = [p for p in found_user["post"] if p.get("post_id") != post_id]
+    save_inscrits(inscrits)
+
+    print(f"[{datetime.now():%H:%M:%S}] 🗑️ Post {post_id[:8]} supprimé")
+    return jsonify({"success": True, "message": "Post supprimé."}), 200
+
+
+@app.route("/api/posts/<post_id>/like", methods=["PUT"])
+def like_post(post_id: str):
+    """Toggle like sur un post. Ajoute/retire le user_id dans liked_by."""
+    data = request.get_json(silent=True)
+    if not data or "user_id" not in data:
+        return jsonify({"success": False, "message": "user_id manquant."}), 400
+
+    user_id = data["user_id"]
+    if not isinstance(user_id, int):
+        return jsonify({"success": False, "message": "user_id invalide."}), 400
+
+    inscrits = load_inscrits()
+    found_post = None
+
+    for u in inscrits:
+        for p in u.get("post", []):
+            if p.get("post_id") == post_id:
+                found_post = p
+                break
+        if found_post:
+            break
+
+    if not found_post:
+        return jsonify({"success": False, "message": "Post introuvable."}), 404
+
+    # Initialiser liked_by si absent
+    if "liked_by" not in found_post:
+        found_post["liked_by"] = []
+
+    liked = False
+    if user_id in found_post["liked_by"]:
+        found_post["liked_by"].remove(user_id)
+    else:
+        found_post["liked_by"].append(user_id)
+        liked = True
+
+    found_post["likes"] = len(found_post["liked_by"])
+    save_inscrits(inscrits)
+
+    return jsonify({
+        "success": True,
+        "liked": liked,
+        "likes": found_post["likes"],
+        "liked_by": found_post["liked_by"]
+    }), 200
+
+
+@app.route("/api/posts/<post_id>/likers", methods=["GET"])
+def get_likers(post_id: str):
+    """Récupérer la liste des utilisateurs qui ont liké un post."""
+    inscrits = load_inscrits()
+    found_post = None
+
+    for u in inscrits:
+        for p in u.get("post", []):
+            if p.get("post_id") == post_id:
+                found_post = p
+                break
+        if found_post:
+            break
+
+    if not found_post:
+        return jsonify({"success": False, "message": "Post introuvable."}), 404
+
+    liked_by = found_post.get("liked_by", [])
+    users_map = {u["id"]: u for u in inscrits}
+
+    likers = []
+    for uid in liked_by:
+        u = users_map.get(uid)
+        if u:
+            likers.append({
+                "id": u["id"],
+                "username": u.get("username", ""),
+                "chien_nom": u.get("chien_nom", "Chien"),
+            })
+
+    return jsonify({"success": True, "likers": likers}), 200
+
+
+@app.route("/api/posts/<post_id>/caption", methods=["PUT"])
+def update_caption(post_id: str):
+    """Modifier la légende d'un post."""
+    data = request.get_json(silent=True)
+    if data is None or "caption" not in data:
+        return jsonify({"success": False, "message": "Champ 'caption' manquant."}), 400
+
+    caption = (data.get("caption") or "").strip()
+
+    inscrits = load_inscrits()
+    found_post = None
+
+    for u in inscrits:
+        for p in u.get("post", []):
+            if p.get("post_id") == post_id:
+                found_post = p
+                break
+        if found_post:
+            break
+
+    if not found_post:
+        return jsonify({"success": False, "message": "Post introuvable."}), 404
+
+    found_post["caption"] = caption
+    save_inscrits(inscrits)
+
+    print(f"[{datetime.now():%H:%M:%S}] ✏️ Légende modifiée pour post {post_id[:8]}")
+    return jsonify({"success": True, "message": "Légende mise à jour.", "caption": caption}), 200
+
+
+@app.route("/api/users/<int:user_id>/profile", methods=["POST"])
+def update_profile(user_id: int):
+    """Modifier la photo de profil et/ou le username."""
+    inscrits = load_inscrits()
+    user = next((u for u in inscrits if u["id"] == user_id), None)
+    if not user:
+        return jsonify({"success": False, "message": "Utilisateur non trouvé."}), 404
+
+    # Username
+    new_username = (request.form.get("username") or "").strip()
+    if new_username and new_username != user.get("username", ""):
+        # Vérifier unicité
+        if any(u.get("username") == new_username and u["id"] != user_id for u in inscrits):
+            return jsonify({"success": False, "message": "Ce nom d'utilisateur est déjà pris."}), 409
+        user["username"] = new_username
+
+    # Photo de profil
+    image = request.files.get("photo")
+    if image and image.filename:
+        if not allowed_file(image.filename):
+            return jsonify({"success": False, "message": "Extension non autorisée (.jpg, .jpeg, .png)."}), 422
+
+        image_data = image.read()
+        if len(image_data) > MAX_FILE_SIZE:
+            return jsonify({"success": False, "message": "Fichier trop volumineux (max 5 Mo)."}), 413
+
+        ext = os.path.splitext(image.filename)[1].lower()
+        unique_name = f"{uuid.uuid4().hex[:16]}{ext}"
+
+        photo_dir = UPLOAD_DIR / f"user_{user_id}" / "photo-profil"
+        os.makedirs(photo_dir, exist_ok=True)
+
+        # Supprimer l'ancienne photo si elle existe
+        old_url = user.get("profil_url", "")
+        if old_url:
+            old_path = BASE_DIR / old_url.lstrip("/")
+            if old_path.exists():
+                old_path.unlink()
+
+        file_path = photo_dir / unique_name
+        with open(file_path, "wb") as f:
+            f.write(image_data)
+
+        user["profil_url"] = f"/static/uploads/user_{user_id}/photo-profil/{unique_name}"
+
+    save_inscrits(inscrits)
+
+    # Retourner les données mises à jour (sans mot de passe)
+    user_data = {k: v for k, v in user.items() if k != "mot_de_passe"}
+    print(f"[{datetime.now():%H:%M:%S}] 📝 Profil mis à jour pour #{user_id}")
+    return jsonify({"success": True, "message": "Profil mis à jour.", "user": user_data}), 200
+
+
 # ── Lancement ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 54)
@@ -446,6 +776,7 @@ if __name__ == "__main__":
     print("=" * 54)
     print(f"  📂  Dossier servi  : {BASE_DIR}")
     print(f"  📄  Fichier JSON   : {DATA_FILE}")
+    print(f"  📷  Uploads dir    : {UPLOAD_DIR}")
     print(f"  🔒  Hash bcrypt    : {'Oui' if USE_BCRYPT else 'Non (pip install bcrypt)'}")
     print()
     print("  ✅  Ouvrez votre navigateur sur :")
@@ -457,5 +788,8 @@ if __name__ == "__main__":
     print("    DELETE /api/inscrits/<id>    → supprimer")
     print("    PUT    /api/users/<id>/rappels → maj rappels")
     print("    PUT    /api/users/<id>/follow  → maj abonnés/abonnements")
+    print("    POST   /api/posts              → créer un post (upload image)")
+    print("    GET    /api/posts               → lister les posts")
+    print("    DELETE /api/posts/<id>          → supprimer un post")
     print("=" * 54)
     app.run(host="0.0.0.0", debug=True, port=5000)

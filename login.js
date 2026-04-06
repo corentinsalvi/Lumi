@@ -122,10 +122,12 @@ form.addEventListener('submit', async (e) => {
         ville: result.ville,
         dateNaissance: result.dateNaissance,
         sexe: result.sexe,
+        post: result.post || [],
+        profil_url: result.profil_url || '',
       }));
       // Rediriger après 2 secondes
       setTimeout(() => {
-        window.location.href = '/tableau-de-bord';
+        window.location.href = '/feed';
       }, 2000);
     } else {
       showFlash('error', result.message || 'Erreur lors de la connexion.');

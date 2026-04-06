@@ -73,23 +73,19 @@ function displayPublicProfile() {
   document.getElementById('publicDogUsername').textContent = '@' + (publicUserData.username || 'user_xxxxx');
   document.getElementById('publicDogRace').textContent = publicUserData.race || 'Race inconnue';
   document.getElementById('publicDogAge').textContent = calculateAge(publicUserData.dateNaissance);
+
+  // Photo de profil
+  document.getElementById('publicProfileAvatar').src = publicUserData.profil_url || 'logo-fonce.png';
   
   // Propriétaire
   const ownerName = [publicUserData.prenom, publicUserData.nom].filter(Boolean).join(' ');
   document.getElementById('publicOwnerName').textContent = ownerName || 'Propriétaire inconnu';
 
-  // Stats
-  const posts = JSON.parse(localStorage.getItem(`posts_${publicUserId}`) || '[]');
-  const followersKey = `followers_${publicUserId}`;
-  const followers = JSON.parse(localStorage.getItem(followersKey) || '[]');
-  const following = JSON.parse(localStorage.getItem(`following_${publicUserId}`) || '[]');
-  
+  // Stats from server data
+  const posts = publicUserData.post || [];
   document.getElementById('publicPostsCount').textContent = posts.length;
-  document.getElementById('publicFollowersCount').textContent = formatCount(followers.length);
-  document.getElementById('publicFollowingCount').textContent = formatCount(following.length);
-
-  // Synchroniser les compteurs du profil public vers inscrits.json
-  syncFollowToServer(parseInt(publicUserId), followers.length, following.length);
+  document.getElementById('publicFollowersCount').textContent = formatCount(publicUserData.abonnes || 0);
+  document.getElementById('publicFollowingCount').textContent = formatCount(publicUserData.abonnements || 0);
 
   // Vérifier si on suit déjà cet utilisateur
   const myFollowing = JSON.parse(localStorage.getItem('following') || '[]');
@@ -99,58 +95,47 @@ function displayPublicProfile() {
 
 // ── Afficher les posts ──────────────────────────────────────────────────
 function displayPosts() {
-  const posts = JSON.parse(localStorage.getItem(`posts_${publicUserId}`) || '[]');
+  const posts = publicUserData.post || [];
   const postsContainer = document.getElementById('postsContainer');
 
   if (posts.length === 0) {
     postsContainer.innerHTML = `
       <div class="no-posts">
-        <i class="fa-solid fa-image"></i>
-        <p>Aucun post</p>
+        <i class="fa-solid fa-camera"></i>
+        <p>Aucune publication</p>
       </div>
     `;
     return;
   }
 
-  // Trier par date décroissante (plus récent d'abord)
-  posts.sort((a, b) => new Date(b.date) - new Date(a.date));
+  // Trier par date décroissante
+  const sorted = [...posts].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-  postsContainer.innerHTML = posts.map(post => {
-    const date = new Date(post.date);
-    const formattedDate = date.toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+  postsContainer.innerHTML = sorted.map(post => {
+    const date = new Date(post.timestamp);
+    const formattedDate = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 
     return `
       <div class="post-card">
         <div class="post-header">
           <img src="logo-fonce.png" alt="${publicUserData.chien_nom}" class="post-avatar" />
           <div class="post-author-info">
-            <p class="post-author-name">${publicUserData.chien_nom}</p>
-            <p class="post-author-username">@${publicUserData.username}</p>
+            <p class="post-author-name">${publicUserData.chien_nom || 'Chien'}</p>
+            <p class="post-author-username">@${publicUserData.username || ''}</p>
           </div>
           <div class="post-date">${formattedDate}</div>
         </div>
         
-        <div class="post-content">${post.content}</div>
+        ${post.image_url ? `<img src="${post.image_url}" alt="Post" class="post-image" />` : ''}
         
-        ${post.image ? `<img src="${post.image}" alt="Post" class="post-image" />` : ''}
+        ${post.caption ? `<div class="post-content">${post.caption}</div>` : ''}
         
         <div class="post-actions">
           <div class="post-action">
             <i class="fa-solid fa-heart"></i>
             <span>${post.likes || 0}</span>
           </div>
-          <div class="post-action">
-            <i class="fa-solid fa-comment"></i>
-            <span>${post.comments || 0}</span>
-          </div>
-          <div class="post-action">
-            <i class="fa-solid fa-share"></i>
-            <span>Partager</span>
-          </div>
+          ${post.location ? `<div class="post-action"><i class="fa-solid fa-location-dot"></i><span>${post.location}</span></div>` : ''}
         </div>
       </div>
     `;

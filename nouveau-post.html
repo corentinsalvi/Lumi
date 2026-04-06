@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" href="logo-fonce.png" type="image/png"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .new-post-container {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px 0;
+    }
+
+    .new-post-card {
+      background: #FFFFFF;
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .new-post-card h2 {
+      font-family: 'Fraunces', serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 20px 0;
+      text-align: center;
+    }
+
+    /* ── Image Upload ─────────────────────────────────────────── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+      background: var(--cream);
+    }
+
+    .upload-zone:hover {
+      border-color: var(--gold);
+      background: #FFF9EE;
+    }
+
+    .upload-zone.has-image {
+      padding: 0;
+      border-style: solid;
+      border-color: var(--gold);
+    }
+
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload-placeholder i {
+      font-size: 36px;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+
+    .upload-placeholder p {
+      font-size: 14px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .upload-placeholder .formats {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 6px;
+      opacity: 0.7;
+    }
+
+    .upload-preview {
+      width: 100%;
+      max-height: 400px;
+      object-fit: cover;
+      display: none;
+      border-radius: var(--radius-sm);
+    }
+
+    .upload-zone.has-image .upload-placeholder {
+      display: none;
+    }
+
+    .upload-zone.has-image .upload-preview {
+      display: block;
+    }
+
+    /* ── Form Fields ──────────────────────────────────────────── */
+    .post-field {
+      margin-bottom: 16px;
+    }
+
+    .post-field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+
+    .post-field textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--ink);
+      background: var(--cream);
+      outline: none;
+      resize: vertical;
+      min-height: 80px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+    }
+
+    .post-field textarea:focus {
+      border-color: var(--gold);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.15);
+    }
+
+    .post-field .input-with-icon {
+      position: relative;
+    }
+
+    .post-field .input-with-icon i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    .post-field .input-with-icon input {
+      width: 100%;
+      padding: 11px 14px 11px 38px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--ink);
+      background: var(--cream);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+    }
+
+    .post-field .input-with-icon input:focus {
+      border-color: var(--gold);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.15);
+    }
+
+    /* ── Char counter ─────────────────────────────────────────── */
+    .char-counter {
+      text-align: right;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .char-counter.limit {
+      color: var(--error);
+    }
+
+    /* ── Submit ────────────────────────────────────────────────── */
+    .post-submit-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--gold);
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+      box-shadow: 0 4px 20px rgba(201, 168, 76, 0.4);
+    }
+
+    .post-submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(201, 168, 76, 0.5);
+    }
+
+    .post-submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── Flash ─────────────────────────────────────────────────── */
+    .post-flash {
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .post-flash.success {
+      display: block;
+      background: #E9F7EF;
+      color: #1E8449;
+      border: 1px solid #A9DFBF;
+    }
+
+    .post-flash.error {
+      display: block;
+      background: #FDEDEC;
+      color: var(--error);
+      border: 1px solid #F1948A;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-header">
+      <a href="/feed" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+        <i class="fa-solid fa-arrow-left" style="color: #F9F1E2; font-size: 20px;"></i>
+        <span style="color: #F9F1E2; font-size: 18px; font-weight: 600;">Nouveau post</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <div class="new-post-container">
+      <div class="new-post-card">
+
+        <div class="post-flash" id="postFlash"></div>
+
+        <!-- enctype="multipart/form-data" est OBLIGATOIRE pour l'envoi de fichiers -->
+        <form id="postForm" enctype="multipart/form-data">
+
+          <!-- Zone d'upload image -->
+          <div class="upload-zone" id="uploadZone">
+            <div class="upload-placeholder">
+              <i class="fa-solid fa-camera"></i>
+              <p>Appuie pour ajouter une photo</p>
+              <p class="formats">JPG, JPEG ou PNG · Max 5 Mo</p>
+            </div>
+            <img class="upload-preview" id="imagePreview" alt="Aperçu" />
+            <input type="file" name="image" id="imageInput" accept=".jpg,.jpeg,.png" />
+          </div>
+
+          <!-- Légende -->
+          <div class="post-field">
+            <label for="captionInput"><i class="fa-solid fa-pen"></i> Légende</label>
+            <textarea id="captionInput" name="caption" placeholder="Raconte ce que fait ton chien..." maxlength="500"></textarea>
+            <div class="char-counter" id="charCounter">0 / 500</div>
+          </div>
+
+          <!-- Lieu -->
+          <div class="post-field">
+            <label for="locationInput"><i class="fa-solid fa-location-dot"></i> Lieu</label>
+            <div class="input-with-icon">
+              <i class="fa-solid fa-location-dot"></i>
+              <input type="text" id="locationInput" name="location" placeholder="Ex: Parc de la Tête d'Or, Lyon" maxlength="100" />
+            </div>
+          </div>
+
+          <!-- Slider publier -->
+          <div class="slide-publish" id="slidePublish">
+            <div class="slide-publish-track" id="slideTrack"></div>
+            <div class="slide-publish-label" id="slideLabel">
+              <i class="fa-solid fa-arrow-right"></i> Glisser pour publier
+            </div>
+            <div class="slide-publish-thumb" id="slideThumb">
+              <i class="fa-solid fa-paw"></i>
+            </div>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/feed" class="nav-item"><i class="fa-solid fa-house"></i></a>
+    <a href="/recherche" class="nav-item"><i class="fa-solid fa-magnifying-glass"></i></a>
+    <a href="/nouveau-post" class="nav-item active"><i class="fa-solid fa-plus"></i></a>
+    <a href="/carnet-sante" class="nav-item"><i class="fa-solid fa-book-medical"></i></a>
+    <a href="/profil" class="nav-item"><i class="fa-solid fa-user"></i></a>
+  </nav>
+
+  <script>
+    // ── Utilisateur connecté ──────────────────────────────────────────────
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (!currentUser.id) window.location.href = '/login.html';
+
+    // ── Aperçu de l'image ─────────────────────────────────────────────────
+    const imageInput = document.getElementById('imageInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const uploadZone = document.getElementById('uploadZone');
+
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Vérifier le type côté client
+      const validTypes = ['image/jpeg', 'image/png'];
+      if (!validTypes.includes(file.type)) {
+        showFlash('Seuls les fichiers JPG et PNG sont acceptés.', 'error');
+        imageInput.value = '';
+        return;
+      }
+
+      // Vérifier la taille (5 Mo)
+      if (file.size > 5 * 1024 * 1024) {
+        showFlash('Le fichier est trop volumineux (max 5 Mo).', 'error');
+        imageInput.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        imagePreview.src = ev.target.result;
+        uploadZone.classList.add('has-image');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // ── Compteur de caractères ────────────────────────────────────────────
+    const captionInput = document.getElementById('captionInput');
+    const charCounter = document.getElementById('charCounter');
+
+    captionInput.addEventListener('input', () => {
+      const len = captionInput.value.length;
+      charCounter.textContent = `${len} / 500`;
+      charCounter.classList.toggle('limit', len >= 480);
+    });
+
+    // ── Flash message ─────────────────────────────────────────────────────
+    function showFlash(message, type) {
+      const flash = document.getElementById('postFlash');
+      flash.textContent = message;
+      flash.className = `post-flash ${type}`;
+    }
+
+    // ── Slide to Publish ─────────────────────────────────────────────────────
+    const slider = document.getElementById('slidePublish');
+    const thumb = document.getElementById('slideThumb');
+    const track = document.getElementById('slideTrack');
+    const label = document.getElementById('slideLabel');
+    let isDragging = false;
+    let startX = 0;
+    let thumbLeft = 4;
+    const THUMB_SIZE = 48;
+    const PADDING = 4;
+    let submitted = false;
+
+    function getMaxLeft() {
+      return slider.offsetWidth - THUMB_SIZE - PADDING * 2;
+    }
+
+    function onStart(clientX) {
+      if (submitted) return;
+      isDragging = true;
+      startX = clientX - thumbLeft;
+      slider.classList.add('dragging');
+    }
+
+    function onMove(clientX) {
+      if (!isDragging || submitted) return;
+      const maxLeft = getMaxLeft();
+      let newLeft = clientX - startX;
+      newLeft = Math.max(PADDING, Math.min(newLeft, maxLeft + PADDING));
+      thumbLeft = newLeft;
+      thumb.style.left = newLeft + 'px';
+      track.style.width = (newLeft + THUMB_SIZE / 2) + 'px';
+      label.style.opacity = 1 - (newLeft - PADDING) / maxLeft;
+    }
+
+    function onEnd() {
+      if (!isDragging || submitted) return;
+      isDragging = false;
+      slider.classList.remove('dragging');
+      const maxLeft = getMaxLeft();
+      const progress = (thumbLeft - PADDING) / maxLeft;
+
+      if (progress > 0.85) {
+        // Confirmé !
+        submitted = true;
+        thumbLeft = maxLeft + PADDING;
+        thumb.style.left = thumbLeft + 'px';
+        track.style.width = '100%';
+        label.style.opacity = 1;
+        slider.classList.add('done');
+        label.innerHTML = '<i class="fa-solid fa-check"></i> Publication...';
+        thumb.innerHTML = '<i class="fa-solid fa-check"></i>';
+        submitPost();
+      } else {
+        // Reset
+        thumbLeft = PADDING;
+        thumb.style.left = PADDING + 'px';
+        track.style.width = '0';
+        label.style.opacity = 1;
+      }
+    }
+
+    // Mouse events
+    thumb.addEventListener('mousedown', (e) => { e.preventDefault(); onStart(e.clientX); });
+    window.addEventListener('mousemove', (e) => onMove(e.clientX));
+    window.addEventListener('mouseup', onEnd);
+
+    // Touch events
+    thumb.addEventListener('touchstart', (e) => { onStart(e.touches[0].clientX); }, { passive: true });
+    window.addEventListener('touchmove', (e) => { onMove(e.touches[0].clientX); }, { passive: true });
+    window.addEventListener('touchend', onEnd);
+
+    // ── Soumission du formulaire ────────────────────────────────────────────
+    async function submitPost() {
+      const formData = new FormData(document.getElementById('postForm'));
+      formData.set('user_id', currentUser.id);
+
+      try {
+        const res = await fetch('/api/posts', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          const cu = JSON.parse(localStorage.getItem('currentUser') || '{}');
+          if (!Array.isArray(cu.post)) cu.post = [];
+          cu.post.push(data.post);
+          localStorage.setItem('currentUser', JSON.stringify(cu));
+
+          showFlash('Post publié ! 🐾', 'success');
+          setTimeout(() => window.location.href = '/feed', 1000);
+        } else {
+          showFlash(data.message || 'Erreur lors de la publication.', 'error');
+          resetSlider();
+        }
+      } catch (err) {
+        console.error('Erreur:', err);
+        showFlash('Erreur réseau. Réessaie.', 'error');
+        resetSlider();
+      }
+    }
+
+    function resetSlider() {
+      submitted = false;
+      thumbLeft = PADDING;
+      thumb.style.left = PADDING + 'px';
+      track.style.width = '0';
+      label.style.opacity = 1;
+      label.innerHTML = '<i class="fa-solid fa-arrow-right"></i> Glisser pour publier';
+      thumb.innerHTML = '<i class="fa-solid fa-paw"></i>';
+      slider.classList.remove('done');
+    }
+  </script>
+</body>
+</html>

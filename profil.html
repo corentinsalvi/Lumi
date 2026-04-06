@@ -23,13 +23,14 @@
     }
 
     .profile-avatar {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
+      width: 100%;
+      max-height: 220px;
+      border-radius: var(--radius);
       border: 4px solid var(--gold);
       margin: 0 auto 16px;
       object-fit: cover;
       background: var(--cream);
+      display: block;
     }
 
     .profile-name {
@@ -132,16 +133,6 @@
       color: #E67E22;
     }
 
-    .menu-item-icon.notifications {
-      background: #FFF4CC;
-      color: #F39C12;
-    }
-
-    .menu-item-icon.premium {
-      background: #FFE5E5;
-      color: #E74C3C;
-    }
-
     .menu-item-text h3 {
       font-size: 16px;
       font-weight: 600;
@@ -196,6 +187,414 @@
       background: #E74C3C;
       color: #FFFFFF;
     }
+
+    /* ── Bouton Modifier le profil ──────────────────────────────── */
+    .btn-edit-profile {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 24px;
+      margin-top: 16px;
+      background: var(--gold);
+      color: #fff;
+      border: none;
+      border-radius: 25px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-edit-profile:hover {
+      background: var(--gold-dark);
+      transform: translateY(-1px);
+    }
+
+    /* ── Grille Mes Posts ────────────────────────────────────── */
+    .my-posts-section {
+      margin-bottom: 20px;
+    }
+
+    .my-posts-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      padding: 0 4px;
+    }
+
+    .my-posts-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+    }
+
+    .my-post-thumb {
+      position: relative;
+      aspect-ratio: 1;
+      overflow: hidden;
+      border-radius: 4px;
+      cursor: pointer;
+      background: var(--cream);
+    }
+
+    .my-post-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: opacity 0.15s;
+    }
+
+    .my-post-thumb:hover img {
+      opacity: 0.8;
+    }
+
+    .my-post-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .my-post-thumb:hover .my-post-overlay {
+      opacity: 1;
+    }
+
+    .my-post-overlay span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .my-posts-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 14px;
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .my-posts-empty i {
+      font-size: 36px;
+      margin-bottom: 12px;
+      opacity: 0.4;
+      display: block;
+    }
+
+    .my-posts-empty a {
+      color: var(--gold-dark);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    /* ── Modal Détail Post ───────────────────────────────────── */
+    .post-detail-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: flex-end;
+    }
+
+    .post-detail-overlay.open {
+      display: flex;
+    }
+
+    .post-detail-modal {
+      background: #fff;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      border-radius: 20px 20px 0 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.25s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .post-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .post-detail-header h3 {
+      margin: 0;
+      font-size: 16px;
+      color: var(--ink);
+    }
+
+    .post-detail-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .post-detail-image {
+      width: 100%;
+      max-height: 400px;
+      object-fit: cover;
+      display: block;
+      background: var(--cream);
+    }
+
+    .post-detail-info {
+      padding: 16px 20px;
+    }
+
+    .post-detail-stats {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .post-detail-stats span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .post-detail-location {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .post-detail-caption-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .post-detail-caption-input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 60px;
+      color: var(--ink);
+      box-sizing: border-box;
+    }
+
+    .post-detail-caption-input:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    .post-detail-actions {
+      display: flex;
+      gap: 10px;
+      padding: 16px 20px;
+      border-top: 1px solid #eee;
+    }
+
+    .post-detail-actions button {
+      flex: 1;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-save-caption {
+      background: var(--gold);
+      color: #fff;
+    }
+
+    .btn-save-caption:hover {
+      background: var(--gold-dark);
+    }
+
+    .btn-delete-post {
+      background: #fff;
+      color: #E74C3C;
+      border: 2px solid #E74C3C !important;
+    }
+
+    .btn-delete-post:hover {
+      background: #E74C3C;
+      color: #fff;
+    }
+
+    .post-detail-time {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 12px;
+    }
+
+    /* ── Modal Modifier Profil ────────────────────────────────── */
+    .edit-profile-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: flex-end;
+    }
+
+    .edit-profile-overlay.open {
+      display: flex;
+    }
+
+    .edit-profile-modal {
+      background: #fff;
+      width: 100%;
+      max-width: 500px;
+      max-height: 85vh;
+      border-radius: 20px 20px 0 0;
+      overflow-y: auto;
+      animation: slideUp 0.25s ease;
+    }
+
+    .edit-profile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .edit-profile-header h3 {
+      margin: 0;
+      font-size: 16px;
+      color: var(--ink);
+    }
+
+    .edit-profile-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .edit-profile-body {
+      padding: 20px;
+    }
+
+    .edit-photo-preview {
+      width: 100%;
+      max-height: 200px;
+      border-radius: var(--radius);
+      object-fit: cover;
+      background: var(--cream);
+      display: block;
+      margin-bottom: 12px;
+      border: 2px solid var(--border);
+    }
+
+    .edit-photo-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gold-dark);
+      margin-bottom: 20px;
+      transition: background 0.2s;
+    }
+
+    .edit-photo-label:hover {
+      background: var(--gold-light);
+    }
+
+    .edit-field-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .edit-field-input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--ink);
+      box-sizing: border-box;
+      margin-bottom: 16px;
+    }
+
+    .edit-field-input:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    .edit-profile-actions {
+      padding: 16px 20px;
+      border-top: 1px solid #eee;
+    }
+
+    .btn-save-profile {
+      width: 100%;
+      padding: 14px;
+      background: var(--gold);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+
+    .btn-save-profile:hover {
+      background: var(--gold-dark);
+    }
   </style>
 </head>
 <body>
@@ -228,6 +627,10 @@
           <span id="ownerName">Propriétaire</span>
         </div>
 
+        <button class="btn-edit-profile" onclick="editProfile()">
+          <i class="fa-solid fa-pen"></i> Modifier le profil
+        </button>
+
         <!-- Stats -->
         <div class="profile-stats">
           <div class="stat-item">
@@ -249,34 +652,13 @@
         </div>
       </div>
 
-      <!-- Menu Items -->
-      <ul class="profile-menu">
-        <li class="profile-menu-item" onclick="goToNotifications()">
-          <a href="#" class="menu-item-content" onclick="return false;">
-            <div class="menu-item-icon notifications">
-              <i class="fa-solid fa-bell"></i>
-            </div>
-            <div class="menu-item-text">
-              <h3>Notifications</h3>
-              <p>Rappels vaccins activés</p>
-            </div>
-          </a>
-          <span class="menu-arrow"><i class="fa-solid fa-chevron-right"></i></span>
-        </li>
-
-        <li class="profile-menu-item" onclick="goToPremium()">
-          <a href="#" class="menu-item-content" onclick="return false;">
-            <div class="menu-item-icon premium">
-              <i class="fa-solid fa-star"></i>
-            </div>
-            <div class="menu-item-text">
-              <h3>PupLife Premium</h3>
-              <p>Passez au Premium</p>
-            </div>
-          </a>
-          <span class="menu-arrow"><i class="fa-solid fa-chevron-right"></i></span>
-        </li>
-      </ul>
+      <!-- Mes Posts -->
+      <div class="my-posts-section">
+        <div class="my-posts-header">
+          <i class="fa-solid fa-grid-2"></i> Publications
+        </div>
+        <div id="myPostsGrid" class="my-posts-grid"></div>
+      </div>
 
       <!-- Owner Info -->
       <div class="owner-info">
@@ -296,13 +678,66 @@
 
   <!-- Bottom Navigation -->
   <nav class="bottom-nav">
-    <a href="/tableau-de-bord" class="nav-item"><i class="fa-solid fa-house"></i></a>
+    <a href="/feed" class="nav-item"><i class="fa-solid fa-house"></i></a>
     <a href="/recherche" class="nav-item"><i class="fa-solid fa-magnifying-glass"></i></a>
-    <a href="#add" class="nav-item"><i class="fa-solid fa-plus"></i></a>
+    <a href="/nouveau-post" class="nav-item"><i class="fa-solid fa-plus"></i></a>
     <a href="/carnet-sante" class="nav-item"><i class="fa-solid fa-book-medical"></i></a>
     <a href="/profil" class="nav-item active"><i class="fa-solid fa-user"></i></a>
   </nav>
 
   <script src="profil.js"></script>
+
+  <!-- Modal Modifier Profil -->
+  <div class="edit-profile-overlay" id="editProfileOverlay" onclick="closeEditProfile(event)">
+    <div class="edit-profile-modal">
+      <div class="edit-profile-header">
+        <h3>Modifier le profil</h3>
+        <button class="edit-profile-close" onclick="closeEditProfile()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="edit-profile-body">
+        <img id="editPhotoPreview" class="edit-photo-preview" src="logo-fonce.png" alt="Photo de profil" />
+        <label class="edit-photo-label" for="editPhotoInput">
+          <i class="fa-solid fa-camera"></i> Changer la photo
+        </label>
+        <input type="file" id="editPhotoInput" accept=".jpg,.jpeg,.png" style="display:none" />
+
+        <div class="edit-field-label">Nom d'utilisateur</div>
+        <input type="text" id="editUsername" class="edit-field-input" placeholder="@username" />
+      </div>
+      <div class="edit-profile-actions">
+        <button class="btn-save-profile" id="btnSaveProfile" onclick="saveProfile()">
+          <i class="fa-solid fa-check"></i> Enregistrer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Détail Post -->
+  <div class="post-detail-overlay" id="postDetailOverlay" onclick="closePostDetail(event)">
+    <div class="post-detail-modal">
+      <div class="post-detail-header">
+        <h3>Publication</h3>
+        <button class="post-detail-close" onclick="closePostDetail()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <img id="postDetailImage" class="post-detail-image" alt="Post" />
+      <div class="post-detail-info">
+        <div class="post-detail-stats">
+          <span><i class="fa-solid fa-heart"></i> <span id="postDetailLikes">0</span> J'aime</span>
+        </div>
+        <div id="postDetailLocation" class="post-detail-location"></div>
+        <div class="post-detail-caption-label">Légende</div>
+        <textarea id="postDetailCaption" class="post-detail-caption-input" maxlength="500"></textarea>
+        <div id="postDetailTime" class="post-detail-time"></div>
+      </div>
+      <div class="post-detail-actions">
+        <button class="btn-save-caption" id="btnSaveCaption" onclick="saveCaption()">
+          <i class="fa-solid fa-check"></i> Enregistrer
+        </button>
+        <button class="btn-delete-post" id="btnDeletePost" onclick="deleteMyPost()">
+          <i class="fa-solid fa-trash"></i> Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

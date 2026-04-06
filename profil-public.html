@@ -23,13 +23,14 @@
     }
 
     .profile-public-avatar {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
+      width: 100%;
+      max-height: 220px;
+      border-radius: var(--radius);
       border: 4px solid var(--gold);
       margin: 0 auto 16px;
       object-fit: cover;
       background: var(--cream);
+      display: block;
     }
 
     .profile-public-name {
@@ -230,6 +231,57 @@
       margin-bottom: 16px;
       opacity: 0.3;
     }
+
+    /* ── Grille posts publics ────────────────────────────────── */
+    .public-posts-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+    }
+
+    .public-post-thumb {
+      position: relative;
+      aspect-ratio: 1;
+      overflow: hidden;
+      border-radius: 4px;
+      background: var(--cream);
+    }
+
+    .public-post-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: opacity 0.15s;
+    }
+
+    .public-post-thumb:hover img {
+      opacity: 0.8;
+    }
+
+    .public-post-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .public-post-thumb:hover .public-post-overlay {
+      opacity: 1;
+    }
+
+    .public-post-overlay span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
   </style>
 </head>
 <body>
@@ -297,9 +349,9 @@
 
   <!-- Bottom Navigation -->
   <nav class="bottom-nav">
-    <a href="/tableau-de-bord" class="nav-item"><i class="fa-solid fa-house"></i></a>
+    <a href="/feed" class="nav-item"><i class="fa-solid fa-house"></i></a>
     <a href="/recherche" class="nav-item"><i class="fa-solid fa-magnifying-glass"></i></a>
-    <a href="#add" class="nav-item"><i class="fa-solid fa-plus"></i></a>
+    <a href="/nouveau-post" class="nav-item"><i class="fa-solid fa-plus"></i></a>
     <a href="/carnet-sante" class="nav-item"><i class="fa-solid fa-book-medical"></i></a>
     <a href="/profil" class="nav-item"><i class="fa-solid fa-user"></i></a>
   </nav>
