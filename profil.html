@@ -172,6 +172,30 @@
     .owner-info strong {
       color: var(--ink);
     }
+
+    .btn-logout {
+      width: 100%;
+      padding: 14px;
+      margin-top: 20px;
+      background: #FFFFFF;
+      color: #E74C3C;
+      border: 2px solid #E74C3C;
+      border-radius: var(--radius);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .btn-logout:hover {
+      background: #E74C3C;
+      color: #FFFFFF;
+    }
   </style>
 </head>
 <body>
@@ -261,6 +285,11 @@
         <span id="ownerPhone">Tél: +33 7 XX XX XX XX</span><br>
         <span id="ownerCity">Ville: Lyon</span>
       </div>
+
+      <button class="btn-logout" onclick="logout()">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        Se déconnecter
+      </button>
 
     </div>
   </main>

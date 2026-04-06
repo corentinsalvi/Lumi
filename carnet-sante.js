@@ -47,6 +47,17 @@ function saveVaccines(vaccines) {
   const vaccinesKey = 'vaccines_' + currentUser.id;
   localStorage.setItem(vaccinesKey, JSON.stringify(vaccines));
   updateVaccineCountInProfile();
+  syncRappelsToServer(vaccines);
+}
+
+// ── Synchroniser les rappels avec le serveur (inscrits.json) ────────────
+function syncRappelsToServer(vaccines) {
+  if (!currentUser.id) return;
+  fetch(`/api/users/${currentUser.id}/rappels`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rappels: vaccines })
+  }).catch(err => console.error('Erreur sync rappels:', err));
 }
 
 // ── Mettre à jour le compteur de vaccins dans le profil ─────────────────

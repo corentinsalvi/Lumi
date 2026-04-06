@@ -5,6 +5,24 @@ let userData = JSON.parse(localStorage.getItem('currentUser') || '{}');
 if (!userData.id) {
   window.location.href = '/login.html';
 }
+
+// ── Formater un nombre (999, 1k, 1m) ──────────────────────────────────────
+function formatCount(n) {
+  n = parseInt(n) || 0;
+  if (n >= 1000000) return Math.floor(n / 1000000) + 'm';
+  if (n >= 1000) return Math.floor(n / 1000) + 'k';
+  return n.toString();
+}
+
+// ── Synchroniser abonnés/abonnements vers le serveur ───────────────────────
+function syncFollowToServer(abonnes, abonnements) {
+  if (!userData.id) return;
+  fetch(`/api/users/${userData.id}/follow`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ abonnes, abonnements })
+  }).catch(err => console.error('Erreur sync follow:', err));
+}
 // ── Écouter la mise à jour des vaccins et follows ──────────────────────
 window.addEventListener('vaccinesUpdated', (e) => {
   userData = JSON.parse(localStorage.getItem('currentUser') || '{}');
@@ -49,8 +67,11 @@ function displayProfileData() {
   const following = JSON.parse(localStorage.getItem('following') || '[]');
   const followersKey = `followers_${userData.id}`;
   const followers = JSON.parse(localStorage.getItem(followersKey) || '[]');
-  document.getElementById('abonnementsCount').textContent = following.length;
-  document.getElementById('abonnesCount').textContent = followers.length;
+  document.getElementById('abonnementsCount').textContent = formatCount(following.length);
+  document.getElementById('abonnesCount').textContent = formatCount(followers.length);
+
+  // Synchroniser les compteurs vers inscrits.json
+  syncFollowToServer(followers.length, following.length);
 }
 
 // ── Calculer l'âge du chien ────────────────────────────────────────────────
@@ -84,6 +105,11 @@ function goToPremium() {
 function editProfile() {
   // À implémenter : édition du profil
   alert('Édition du profil (à venir)');
+}
+
+function logout() {
+  localStorage.removeItem('currentUser');
+  window.location.href = '/login.html';
 }
 
 // ── Initialisation ─────────────────────────────────────────────────────────

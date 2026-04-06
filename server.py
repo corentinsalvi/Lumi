@@ -357,6 +357,56 @@ def supprimer_inscrit(user_id: int):
     return jsonify({"success": True, "message": f"Inscrit #{user_id} supprimé."})
 
 
+@app.route("/api/users/<int:user_id>/rappels", methods=["PUT"])
+def update_rappels(user_id: int):
+    """Met à jour le champ rappel d'un utilisateur dans inscrits.json"""
+    data = request.get_json(silent=True)
+    if data is None or "rappels" not in data:
+        return jsonify({"success": False, "message": "Données JSON manquantes (champ 'rappels')."}), 400
+
+    rappels = data["rappels"]
+    if not isinstance(rappels, list):
+        return jsonify({"success": False, "message": "Le champ 'rappels' doit être une liste."}), 422
+
+    inscrits = load_inscrits()
+    user = next((u for u in inscrits if u["id"] == user_id), None)
+
+    if not user:
+        return jsonify({"success": False, "message": "Utilisateur non trouvé."}), 404
+
+    user["rappel"] = rappels
+    save_inscrits(inscrits)
+
+    print(f"[{datetime.now():%H:%M:%S}] 🔔 Rappels mis à jour pour l'utilisateur #{user_id} ({len(rappels)} rappel(s))")
+
+    return jsonify({"success": True, "message": "Rappels mis à jour.", "count": len(rappels)}), 200
+
+
+@app.route("/api/users/<int:user_id>/follow", methods=["PUT"])
+def update_follow(user_id: int):
+    """Met à jour les champs abonnes et abonnements d'un utilisateur dans inscrits.json"""
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"success": False, "message": "Données JSON manquantes."}), 400
+
+    inscrits = load_inscrits()
+    user = next((u for u in inscrits if u["id"] == user_id), None)
+
+    if not user:
+        return jsonify({"success": False, "message": "Utilisateur non trouvé."}), 404
+
+    if "abonnes" in data and isinstance(data["abonnes"], int):
+        user["abonnes"] = data["abonnes"]
+    if "abonnements" in data and isinstance(data["abonnements"], int):
+        user["abonnements"] = data["abonnements"]
+
+    save_inscrits(inscrits)
+
+    print(f"[{datetime.now():%H:%M:%S}] 👥 Follow mis à jour pour #{user_id} — abonnés: {user.get('abonnes', 0)}, abonnements: {user.get('abonnements', 0)}")
+
+    return jsonify({"success": True, "message": "Follow mis à jour."}), 200
+
+
 @app.route("/api/search", methods=["GET"])
 def search_users():
     """Rechercher des utilisateurs par username, nom du chien ou nom du propriétaire"""
@@ -405,5 +455,7 @@ if __name__ == "__main__":
     print("    POST   /api/inscription      → inscrire")
     print("    GET    /api/inscrits         → lister (sans mdp)")
     print("    DELETE /api/inscrits/<id>    → supprimer")
+    print("    PUT    /api/users/<id>/rappels → maj rappels")
+    print("    PUT    /api/users/<id>/follow  → maj abonnés/abonnements")
     print("=" * 54)
     app.run(host="0.0.0.0", debug=True, port=5000)
