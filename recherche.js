@@ -5,7 +5,7 @@ const resultsList = document.getElementById('resultsList');
 const searchEmpty = document.getElementById('searchEmpty');
 
 // ── Récupérer les données de l'utilisateur actuel ─────────────────────────
-let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+let currentUser = {};
 
 // ── Événement de recherche ───────────────────────────────────────────────
 let searchTimeout;
@@ -48,20 +48,20 @@ async function performSearch(query) {
 
 // ── Afficher les résultats ───────────────────────────────────────────────
 function displayResults(results) {
-  const following = JSON.parse(localStorage.getItem('following') || '[]');
+  const myFollowing = Array.isArray(currentUser.following) ? currentUser.following : [];
   
   resultsList.innerHTML = results.map(user => {
     let sexeSymbol = '';
     if (user.sexe === 'male') sexeSymbol = '♂️';
     else if (user.sexe === 'femelle') sexeSymbol = '♀️';
     
-    const isFollowing = following.includes(parseInt(user.id));
+    const isFollowing = myFollowing.includes(parseInt(user.id));
     const btnClass = isFollowing ? 'user-follow-btn following' : 'user-follow-btn';
     const btnText = isFollowing ? 'Suivi ✓' : 'Suivre';
     
     return `
     <div class="user-card" onclick="viewProfile('${user.id}')">
-      <img src="logo-fonce.png" alt="${user.chien_nom}" class="user-avatar" />
+      <img src="${user.profil_url || 'logo-fonce.png'}" alt="${user.chien_nom}" class="user-avatar" />
       <div class="user-info">
         <p class="user-name">${user.chien_nom}</p>
         <p class="user-username">@${user.username}</p>
@@ -85,55 +85,59 @@ function viewProfile(userId) {
 }
 
 // ── Suivre un utilisateur ────────────────────────────────────────────────
-function followUser(event, userId) {
+async function followUser(event, userId) {
   event.stopPropagation();
   const btn = event.target;
   const myId = currentUser.id;
-  
-  if (btn.classList.contains('following')) {
-    // Unfollow
-    btn.classList.remove('following');
-    btn.textContent = 'Suivre';
-    
-    // Retirer userId de ma liste "following"
-    let following = JSON.parse(localStorage.getItem('following') || '[]');
-    following = following.filter(id => id !== parseInt(userId));
-    localStorage.setItem('following', JSON.stringify(following));
-    
-    // Retirer mon ID de la liste "followers_userId"
-    const followersKey = `followers_${userId}`;
-    let followers = JSON.parse(localStorage.getItem(followersKey) || '[]');
-    followers = followers.filter(id => id !== myId);
-    localStorage.setItem(followersKey, JSON.stringify(followers));
-  } else {
-    // Follow
-    btn.classList.add('following');
-    btn.textContent = 'Suivi ✓';
-    
-    // Ajouter userId à ma liste "following"
-    let following = JSON.parse(localStorage.getItem('following') || '[]');
-    if (!following.includes(parseInt(userId))) {
-      following.push(parseInt(userId));
-      localStorage.setItem('following', JSON.stringify(following));
+  btn.disabled = true;
+
+  const isCurrentlyFollowing = btn.classList.contains('following');
+  const method = isCurrentlyFollowing ? 'DELETE' : 'POST';
+
+  try {
+    const res = await fetch('/api/follow', {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: myId,
+        target_id: parseInt(userId)
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      if (data.is_following) {
+        btn.classList.add('following');
+        btn.textContent = 'Suivi ✓';
+        if (!currentUser.following) currentUser.following = [];
+        if (!currentUser.following.includes(parseInt(userId))) {
+          currentUser.following.push(parseInt(userId));
+        }
+      } else {
+        btn.classList.remove('following');
+        btn.textContent = 'Suivre';
+        if (Array.isArray(currentUser.following)) {
+          currentUser.following = currentUser.following.filter(id => id !== parseInt(userId));
+        }
+      }
     }
-    
-    // Ajouter mon ID à la liste "followers_userId"
-    const followersKey = `followers_${userId}`;
-    let followers = JSON.parse(localStorage.getItem(followersKey) || '[]');
-    if (!followers.includes(myId)) {
-      followers.push(myId);
-      localStorage.setItem(followersKey, JSON.stringify(followers));
-    }
+  } catch (err) {
+    console.error('Erreur follow/unfollow:', err);
   }
-  
-  // Mettre à jour le profil si on est sur sa page
-  window.dispatchEvent(new CustomEvent('followUpdated'));
+
+  btn.disabled = false;
 }
 
 // ── Initialisation ───────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  // Vérifier que l'utilisateur est connecté
-  if (!currentUser.id) {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Charger l'utilisateur connecté depuis la session
+  try {
+    const res = await fetch('/api/me');
+    const data = await res.json();
+    if (!data.success) { window.location.href = '/login.html'; return; }
+    currentUser = data.user;
+  } catch (err) {
     window.location.href = '/login.html';
   }
 });

@@ -82,8 +82,16 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  // Récupérer les données de l'étape 1 du localStorage
-  const step1Data = JSON.parse(localStorage.getItem('step1Data') || '{}');
+  // Vérifier les données de l'étape 1 en session serveur
+  let step1Data;
+  try {
+    const res = await fetch('/api/session/steps');
+    const stepsData = await res.json();
+    step1Data = stepsData.step1 || {};
+  } catch (err) {
+    step1Data = {};
+  }
+
   if (!step1Data.email) {
     showFlash('error', 'Erreur : données de l\'étape 1 manquantes');
     return;
@@ -97,8 +105,17 @@ form.addEventListener('submit', async (e) => {
     ville:     document.getElementById('ville').value.trim(),
   };
 
-  // Stocker dans localStorage
-  localStorage.setItem('step2Data', JSON.stringify(step2Data));
+  // Stocker en session serveur
+  try {
+    await fetch('/api/session/step2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(step2Data),
+    });
+  } catch (err) {
+    showFlash('error', 'Erreur réseau.');
+    return;
+  }
 
   // Naviguer vers l'étape 3
   window.location.href = '/chien-info.html';

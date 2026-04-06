@@ -1,5 +1,5 @@
 // ── Récupérer les données de l'utilisateur à afficher ────────────────────
-let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+let currentUser = {};
 let publicUserId = new URLSearchParams(window.location.search).get('id');
 
 if (!publicUserId) {
@@ -15,19 +15,6 @@ function formatCount(n) {
   if (n >= 1000000) return Math.floor(n / 1000000) + 'm';
   if (n >= 1000) return Math.floor(n / 1000) + 'k';
   return n.toString();
-}
-
-// ── Synchroniser abonnés/abonnements vers le serveur ───────────────────────
-function syncFollowToServer(userId, abonnes, abonnements) {
-  if (!userId) return;
-  const body = {};
-  if (abonnes !== null) body.abonnes = abonnes;
-  if (abonnements !== null) body.abonnements = abonnements;
-  fetch(`/api/users/${userId}/follow`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  }).catch(err => console.error('Erreur sync follow:', err));
 }
 
 // ── Fonction pour charger les données publiques ──────────────────────────
@@ -84,12 +71,13 @@ function displayPublicProfile() {
   // Stats from server data
   const posts = publicUserData.post || [];
   document.getElementById('publicPostsCount').textContent = posts.length;
-  document.getElementById('publicFollowersCount').textContent = formatCount(publicUserData.abonnes || 0);
-  document.getElementById('publicFollowingCount').textContent = formatCount(publicUserData.abonnements || 0);
+  const followersCount = Array.isArray(publicUserData.followers) ? publicUserData.followers.length : 0;
+  const followingCount = Array.isArray(publicUserData.following) ? publicUserData.following.length : 0;
+  document.getElementById('publicFollowersCount').textContent = formatCount(followersCount);
+  document.getElementById('publicFollowingCount').textContent = formatCount(followingCount);
 
-  // Vérifier si on suit déjà cet utilisateur
-  const myFollowing = JSON.parse(localStorage.getItem('following') || '[]');
-  const isFollowing = myFollowing.includes(parseInt(publicUserId));
+  // Vérifier si on suit déjà cet utilisateur (depuis les données serveur)
+  const isFollowing = Array.isArray(publicUserData.followers) && publicUserData.followers.includes(currentUser.id);
   updateFollowButton(isFollowing);
 }
 
@@ -133,7 +121,7 @@ function displayPosts() {
         <div class="post-actions">
           <div class="post-action">
             <i class="fa-solid fa-heart"></i>
-            <span>${post.likes || 0}</span>
+            <span>${(post.liked_by || []).length}</span>
           </div>
           ${post.location ? `<div class="post-action"><i class="fa-solid fa-location-dot"></i><span>${post.location}</span></div>` : ''}
         </div>
@@ -155,50 +143,40 @@ function updateFollowButton(isFollowing) {
 }
 
 // ── Suivre/Unfollow ────────────────────────────────────────────────────
-function toggleFollow() {
+async function toggleFollow() {
   if (!currentUser.id) {
     window.location.href = '/login.html';
     return;
   }
 
-  const myFollowing = JSON.parse(localStorage.getItem('following') || '[]');
   const btn = document.getElementById('followBtn');
-  
-  if (myFollowing.includes(parseInt(publicUserId))) {
-    // Unfollow
-    const updated = myFollowing.filter(id => id !== parseInt(publicUserId));
-    localStorage.setItem('following', JSON.stringify(updated));
-    
-    // Retirer du profil suivi aussi
-    const followersKey = `followers_${publicUserId}`;
-    const followers = JSON.parse(localStorage.getItem(followersKey) || '[]');
-    const updatedFollowers = followers.filter(id => id !== currentUser.id);
-    localStorage.setItem(followersKey, JSON.stringify(updatedFollowers));
-    
-    // Synchroniser les abonnements de l'utilisateur courant
-    syncFollowToServer(currentUser.id, null, updated.length);
+  btn.disabled = true;
 
-    updateFollowButton(false);
-    displayPublicProfile();
-  } else {
-    // Follow
-    myFollowing.push(parseInt(publicUserId));
-    localStorage.setItem('following', JSON.stringify(myFollowing));
-    
-    // Ajouter au profil suivi aussi
-    const followersKey = `followers_${publicUserId}`;
-    const followers = JSON.parse(localStorage.getItem(followersKey) || '[]');
-    if (!followers.includes(currentUser.id)) {
-      followers.push(currentUser.id);
-      localStorage.setItem(followersKey, JSON.stringify(followers));
+  const isCurrentlyFollowing = Array.isArray(publicUserData.followers) && publicUserData.followers.includes(currentUser.id);
+  const method = isCurrentlyFollowing ? 'DELETE' : 'POST';
+
+  try {
+    const res = await fetch('/api/follow', {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: currentUser.id,
+        target_id: parseInt(publicUserId)
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      // Recharger les données du profil public pour avoir les listes à jour
+      await loadPublicUserData();
+      displayPublicProfile();
     }
-    
-    // Synchroniser les abonnements de l'utilisateur courant
-    syncFollowToServer(currentUser.id, null, myFollowing.length);
-
-    updateFollowButton(true);
-    displayPublicProfile();
+  } catch (err) {
+    console.error('Erreur follow/unfollow:', err);
   }
+
+  btn.disabled = false;
 }
 
 // ── Envoyer un message ─────────────────────────────────────────────────
@@ -206,8 +184,68 @@ function sendMessage() {
   alert('Messagerie (à venir)');
 }
 
+// ── Voir abonnés / abonnements du profil public ────────────────────────
+async function showPublicFollowers() {
+  const ids = Array.isArray(publicUserData.followers) ? publicUserData.followers : [];
+  openFollowModal('Abonnés', ids);
+}
+
+async function showPublicFollowing() {
+  const ids = Array.isArray(publicUserData.following) ? publicUserData.following : [];
+  openFollowModal('Abonnements', ids);
+}
+
+async function openFollowModal(title, ids) {
+  const overlay = document.getElementById('followOverlay');
+  const list = document.getElementById('followList');
+  document.getElementById('followModalTitle').textContent = title;
+  list.innerHTML = '<div class="follow-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+  overlay.classList.add('open');
+
+  if (!ids.length) {
+    list.innerHTML = `<div class="follow-empty">Aucun ${title.toLowerCase()}</div>`;
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/users/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    const data = await res.json();
+
+    if (!data.success || !data.users.length) {
+      list.innerHTML = `<div class="follow-empty">Aucun ${title.toLowerCase()}</div>`;
+      return;
+    }
+
+    list.innerHTML = data.users.map(u => `
+      <div class="follow-item" onclick="window.location.href='/profil-public?id=${u.id}'">
+        <img src="${u.profil_url || 'logo-fonce.png'}" alt="${u.chien_nom}" class="follow-avatar" />
+        <span class="follow-name">${u.chien_nom}</span>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('Erreur chargement follow:', err);
+    list.innerHTML = '<div class="follow-empty">Erreur de chargement</div>';
+  }
+}
+
+function closeFollowModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('followOverlay').classList.remove('open');
+}
+
 // ── Initialisation ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // Charger l'utilisateur connecté depuis la session
+  try {
+    const meRes = await fetch('/api/me');
+    const meData = await meRes.json();
+    if (meData.success) currentUser = meData.user;
+  } catch (e) {}
+
   if (await loadPublicUserData()) {
     displayPublicProfile();
     displayPosts();

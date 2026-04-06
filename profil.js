@@ -1,10 +1,5 @@
-// ── Récupérer les données utilisateur ──────────────────────────────────────
-let userData = JSON.parse(localStorage.getItem('currentUser') || '{}');
-
-// Si pas de données en localStorage, rediriger vers la connexion
-if (!userData.id) {
-  window.location.href = '/login.html';
-}
+// ── Données utilisateur (chargées depuis le serveur) ──────────────────────
+let userData = {};
 
 // ── Formater un nombre (999, 1k, 1m) ──────────────────────────────────────
 function formatCount(n) {
@@ -14,24 +9,6 @@ function formatCount(n) {
   return n.toString();
 }
 
-// ── Synchroniser abonnés/abonnements vers le serveur ───────────────────────
-function syncFollowToServer(abonnes, abonnements) {
-  if (!userData.id) return;
-  fetch(`/api/users/${userData.id}/follow`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ abonnes, abonnements })
-  }).catch(err => console.error('Erreur sync follow:', err));
-}
-// ── Écouter la mise à jour des vaccins et follows ──────────────────────
-window.addEventListener('vaccinesUpdated', (e) => {
-  userData = JSON.parse(localStorage.getItem('currentUser') || '{}');
-  displayProfileData();
-});
-
-window.addEventListener('followUpdated', (e) => {
-  displayProfileData();
-});
 // ── Afficher les données du profil ─────────────────────────────────────────
 function displayProfileData() {
   // Propriétaire
@@ -68,15 +45,64 @@ function displayProfileData() {
   document.getElementById('postsCount').textContent = postCount;
   document.getElementById('rappelsCount').textContent = userData.vaccins || '0';
   
-  // Abonnements et abonnés
-  const following = JSON.parse(localStorage.getItem('following') || '[]');
-  const followersKey = `followers_${userData.id}`;
-  const followers = JSON.parse(localStorage.getItem(followersKey) || '[]');
-  document.getElementById('abonnementsCount').textContent = formatCount(following.length);
-  document.getElementById('abonnesCount').textContent = formatCount(followers.length);
+  // Abonnements et abonnés (depuis les données serveur dans userData)
+  const followingCount = Array.isArray(userData.following) ? userData.following.length : 0;
+  const followersCount = Array.isArray(userData.followers) ? userData.followers.length : 0;
+  document.getElementById('abonnementsCount').textContent = formatCount(followingCount);
+  document.getElementById('abonnesCount').textContent = formatCount(followersCount);
+}
 
-  // Synchroniser les compteurs vers inscrits.json
-  syncFollowToServer(followers.length, following.length);
+// ── Voir abonnés / abonnements ─────────────────────────────────────────────
+async function showFollowers() {
+  const ids = Array.isArray(userData.followers) ? userData.followers : [];
+  openFollowModal('Abonnés', ids);
+}
+
+async function showFollowing() {
+  const ids = Array.isArray(userData.following) ? userData.following : [];
+  openFollowModal('Abonnements', ids);
+}
+
+async function openFollowModal(title, ids) {
+  const overlay = document.getElementById('followOverlay');
+  const list = document.getElementById('followList');
+  document.getElementById('followModalTitle').textContent = title;
+  list.innerHTML = '<div class="follow-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+  overlay.classList.add('open');
+
+  if (!ids.length) {
+    list.innerHTML = `<div class="follow-empty">Aucun ${title.toLowerCase()}</div>`;
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/users/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    const data = await res.json();
+
+    if (!data.success || !data.users.length) {
+      list.innerHTML = `<div class="follow-empty">Aucun ${title.toLowerCase()}</div>`;
+      return;
+    }
+
+    list.innerHTML = data.users.map(u => `
+      <div class="follow-item" onclick="window.location.href='/profil-public?id=${u.id}'">
+        <img src="${u.profil_url || 'logo-fonce.png'}" alt="${u.chien_nom}" class="follow-avatar" />
+        <span class="follow-name">${u.chien_nom}</span>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('Erreur chargement follow:', err);
+    list.innerHTML = '<div class="follow-empty">Erreur de chargement</div>';
+  }
+}
+
+function closeFollowModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('followOverlay').classList.remove('open');
 }
 
 // ── Calculer l'âge du chien ────────────────────────────────────────────────
@@ -147,10 +173,8 @@ async function saveProfile() {
     const data = await res.json();
 
     if (data.success) {
-      // Mettre à jour localStorage
       if (data.user.username) userData.username = data.user.username;
       if (data.user.profil_url) userData.profil_url = data.user.profil_url;
-      localStorage.setItem('currentUser', JSON.stringify(userData));
 
       displayProfileData();
       closeEditProfile();
@@ -168,18 +192,24 @@ async function saveProfile() {
   }
 }
 
-function logout() {
-  localStorage.removeItem('currentUser');
+async function logout() {
+  await fetch('/api/logout', { method: 'POST' });
   window.location.href = '/login.html';
 }
 
 // ── Initialisation ─────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  // Compter les vaccins existants et les ajouter aux données utilisateur
-  const vaccinesKey = 'vaccines_' + userData.id;
-  const vaccines = JSON.parse(localStorage.getItem(vaccinesKey) || '[]');
-  userData.vaccins = vaccines.length;
-  localStorage.setItem('currentUser', JSON.stringify(userData));
+document.addEventListener('DOMContentLoaded', async () => {
+  // Charger les données depuis le serveur via la session
+  try {
+    const res = await fetch('/api/me');
+    const data = await res.json();
+    if (!data.success) { window.location.href = '/login.html'; return; }
+    userData = data.user;
+    userData.vaccins = (userData.rappel || []).length;
+  } catch (err) {
+    window.location.href = '/login.html';
+    return;
+  }
   
   displayProfileData();
   loadMyPosts();
@@ -305,13 +335,10 @@ async function deleteMyPost() {
     const data = await res.json();
 
     if (data.success) {
-      // Mettre à jour localStorage
-      const cu = JSON.parse(localStorage.getItem('currentUser') || '{}');
-      if (Array.isArray(cu.post)) {
-        cu.post = cu.post.filter(p => p.post_id !== currentPostId);
-        localStorage.setItem('currentUser', JSON.stringify(cu));
+      // Mettre à jour userData en mémoire
+      if (Array.isArray(userData.post)) {
+        userData.post = userData.post.filter(p => p.post_id !== currentPostId);
       }
-      userData = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
       closePostDetail();
       displayProfileData();

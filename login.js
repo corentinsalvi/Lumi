@@ -107,25 +107,7 @@ form.addEventListener('submit', async (e) => {
     const result = await response.json();
 
     if (result.success) {
-      showFlash('success', `Bienvenue ${result.prenom} ! 🐾`);
-      // Stocker les infos utilisateur
-      localStorage.setItem('currentUser', JSON.stringify({
-        id: result.id,
-        username: result.username,
-        email: result.email,
-        prenom: result.prenom,
-        nom: result.nom,
-        chien_nom: result.chien_nom,
-        race: result.race,
-        poids: result.poids,
-        telephone: result.telephone,
-        ville: result.ville,
-        dateNaissance: result.dateNaissance,
-        sexe: result.sexe,
-        post: result.post || [],
-        profil_url: result.profil_url || '',
-      }));
-      // Rediriger après 2 secondes
+      showFlash('success', result.message);
       setTimeout(() => {
         window.location.href = '/feed';
       }, 2000);

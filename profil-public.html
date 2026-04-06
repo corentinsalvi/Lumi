@@ -282,6 +282,65 @@
       align-items: center;
       gap: 4px;
     }
+
+    /* ── Modal Follow (abonnés / abonnements) ─────────────── */
+    .follow-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 1000;
+      justify-content: center;
+      align-items: flex-end;
+    }
+    .follow-overlay.open { display: flex; }
+
+    .follow-modal {
+      background: #fff;
+      width: 100%;
+      max-width: 500px;
+      max-height: 60vh;
+      border-radius: 20px 20px 0 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.25s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .follow-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .follow-header h3 { margin: 0; font-size: 16px; color: var(--ink); }
+
+    .follow-close {
+      background: none; border: none;
+      font-size: 20px; color: var(--muted); cursor: pointer;
+    }
+
+    .follow-list { overflow-y: auto; padding: 8px 0; }
+
+    .follow-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 20px; cursor: pointer; transition: background 0.15s;
+    }
+    .follow-item:hover { background: var(--cream); }
+
+    .follow-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      object-fit: cover; border: 2px solid var(--gold-light); background: var(--cream);
+    }
+
+    .follow-name { font-weight: 600; font-size: 14px; color: var(--ink); }
+    .follow-empty { text-align: center; padding: 32px 20px; color: var(--muted); font-size: 14px; }
   </style>
 </head>
 <body>
@@ -318,11 +377,11 @@
             <div class="stat-number" id="publicPostsCount">0</div>
             <div class="stat-label">Posts</div>
           </div>
-          <div class="stat-item">
+          <div class="stat-item" onclick="showPublicFollowers()" style="cursor:pointer;">
             <div class="stat-number" id="publicFollowersCount">0</div>
             <div class="stat-label">Abonnés</div>
           </div>
-          <div class="stat-item">
+          <div class="stat-item" onclick="showPublicFollowing()" style="cursor:pointer;">
             <div class="stat-number" id="publicFollowingCount">0</div>
             <div class="stat-label">Abonnements</div>
           </div>
@@ -357,5 +416,16 @@
   </nav>
 
   <script src="profil-public.js"></script>
+
+  <!-- Modal Abonnés / Abonnements -->
+  <div class="follow-overlay" id="followOverlay" onclick="closeFollowModal(event)">
+    <div class="follow-modal">
+      <div class="follow-header">
+        <h3 id="followModalTitle">Abonnés</h3>
+        <button class="follow-close" onclick="closeFollowModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="follow-list" id="followList"></div>
+    </div>
+  </div>
 </body>
 </html>

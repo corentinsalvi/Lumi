@@ -8,7 +8,10 @@ const vaccineNotes = document.getElementById('vaccineNotes');
 const addVaccineModal = document.getElementById('addVaccineModal');
 
 // ── Utilisateur connecté ────────────────────────────────────────────────────
-let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+let currentUser = {};
+
+// ── Cache local des vaccins (chargés depuis le serveur) ─────────────────────
+let vaccinesCache = [];
 
 // ── Gestion du Modal ────────────────────────────────────────────────────
 function openAddVaccineModal() {
@@ -30,53 +33,62 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ── Initialisation ────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  loadVaccines();
+document.addEventListener('DOMContentLoaded', async () => {
+  // Charger l'utilisateur connecté depuis la session
+  try {
+    const res = await fetch('/api/me');
+    const data = await res.json();
+    if (!data.success) { window.location.href = '/login.html'; return; }
+    currentUser = data.user;
+  } catch (err) {
+    window.location.href = '/login.html';
+    return;
+  }
+  await fetchVaccines();
   displayVaccines();
 });
 
-// ── Charger les vaccins depuis localStorage ─────────────────────────────
-function loadVaccines() {
-  const vaccinesKey = 'vaccines_' + currentUser.id;
-  const saved = localStorage.getItem(vaccinesKey);
-  return saved ? JSON.parse(saved) : [];
-}
-
-// ── Sauvegarder les vaccins ─────────────────────────────────────────────
-function saveVaccines(vaccines) {
-  const vaccinesKey = 'vaccines_' + currentUser.id;
-  localStorage.setItem(vaccinesKey, JSON.stringify(vaccines));
-  updateVaccineCountInProfile();
-  syncRappelsToServer(vaccines);
-}
-
-// ── Synchroniser les rappels avec le serveur (inscrits.json) ────────────
-function syncRappelsToServer(vaccines) {
+// ── Charger les vaccins depuis le serveur ────────────────────────────────
+async function fetchVaccines() {
   if (!currentUser.id) return;
-  fetch(`/api/users/${currentUser.id}/rappels`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rappels: vaccines })
-  }).catch(err => console.error('Erreur sync rappels:', err));
+  try {
+    const res = await fetch(`/api/users/${currentUser.id}/rappels`);
+    const data = await res.json();
+    if (data.success) {
+      vaccinesCache = data.rappels || [];
+    }
+  } catch (err) {
+    console.error('Erreur chargement rappels:', err);
+  }
+}
+
+// ── Sauvegarder les vaccins sur le serveur ──────────────────────────────
+async function saveVaccines() {
+  if (!currentUser.id) return;
+  try {
+    const res = await fetch(`/api/users/${currentUser.id}/rappels`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rappels: vaccinesCache })
+    });
+    const data = await res.json();
+    if (data.success) {
+      updateVaccineCountInProfile();
+    }
+  } catch (err) {
+    console.error('Erreur sauvegarde rappels:', err);
+  }
 }
 
 // ── Mettre à jour le compteur de vaccins dans le profil ─────────────────
 function updateVaccineCountInProfile() {
-  const vaccines = loadVaccines();
-  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-  if (currentUser.id) {
-    currentUser.vaccins = vaccines.length;
-    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    // Envoyer un événement personnalisé pour mettre à jour le profil en temps réel
-    window.dispatchEvent(new CustomEvent('vaccinesUpdated', { detail: { count: vaccines.length } }));
-  }
+  // Rien à faire côté client, les données sont sur le serveur
 }
 
 // ── Ajouter un vaccin ───────────────────────────────────────────────────
-form.addEventListener('submit', (e) => {
+form.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const vaccines = loadVaccines();
   const newVaccine = {
     id: Date.now(),
     name: vaccineName.value.trim(),
@@ -86,10 +98,9 @@ form.addEventListener('submit', (e) => {
     rappelDone: false,
   };
 
-  vaccines.push(newVaccine);
-  saveVaccines(vaccines);
+  vaccinesCache.push(newVaccine);
+  await saveVaccines();
 
-  // Réinitialiser et fermer le formulaire
   form.reset();
   closeAddVaccineModal();
   displayVaccines();
@@ -97,7 +108,7 @@ form.addEventListener('submit', (e) => {
 
 // ── Afficher les vaccins ────────────────────────────────────────────────
 function displayVaccines() {
-  const vaccines = loadVaccines();
+  const vaccines = [...vaccinesCache];
 
   if (vaccines.length === 0) {
     vaccinesList.innerHTML = '<p class="no-vaccines">Aucun vaccin enregistré</p>';
@@ -154,22 +165,20 @@ function displayVaccines() {
 }
 
 // ── Supprimer un vaccin ─────────────────────────────────────────────────
-function deleteVaccine(id) {
+async function deleteVaccine(id) {
   if (confirm('Supprimer ce vaccin ?')) {
-    let vaccines = loadVaccines();
-    vaccines = vaccines.filter(v => v.id !== id);
-    saveVaccines(vaccines);
+    vaccinesCache = vaccinesCache.filter(v => v.id !== id);
+    await saveVaccines();
     displayVaccines();
   }
 }
 
 // ── Basculer l'état du rappel ───────────────────────────────────────────
-function toggleReminder(id, isDone) {
-  let vaccines = loadVaccines();
-  const vaccine = vaccines.find(v => v.id === id);
+async function toggleReminder(id, isDone) {
+  const vaccine = vaccinesCache.find(v => v.id === id);
   if (vaccine) {
     vaccine.rappelDone = isDone;
-    saveVaccines(vaccines);
+    await saveVaccines();
     displayVaccines();
   }
 }

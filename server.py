@@ -23,7 +23,7 @@ import secrets
 import string
 from datetime import datetime
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
 
 try:
@@ -42,6 +42,7 @@ ALLOWED_EXT = {".jpg", ".jpeg", ".png"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 Mo
 
 app = Flask(__name__, static_folder=str(BASE_DIR / "static"))
+app.secret_key = secrets.token_hex(32)
 CORS(app)
 
 
@@ -165,6 +166,62 @@ def generate_unique_username(inscrits: list) -> str:
             return username
 
 
+# ── API Session / Auth ────────────────────────────────────────────────────────
+
+@app.route("/api/me", methods=["GET"])
+def get_me():
+    """Retourne les données de l'utilisateur connecté via la session."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "message": "Non connecté."}), 401
+
+    inscrits = load_inscrits()
+    user = next((u for u in inscrits if u["id"] == user_id), None)
+    if not user:
+        session.clear()
+        return jsonify({"success": False, "message": "Utilisateur introuvable."}), 401
+
+    user_data = {k: v for k, v in user.items() if k != "mot_de_passe"}
+    return jsonify({"success": True, "user": user_data}), 200
+
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    """Déconnexion — supprime la session."""
+    session.clear()
+    return jsonify({"success": True, "message": "Déconnecté."}), 200
+
+
+@app.route("/api/session/step1", methods=["POST"])
+def session_step1():
+    """Stocker les données de l'étape 1 d'inscription en session."""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"success": False}), 400
+    session["step1"] = data
+    return jsonify({"success": True}), 200
+
+
+@app.route("/api/session/step2", methods=["POST"])
+def session_step2():
+    """Stocker les données de l'étape 2 d'inscription en session."""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"success": False}), 400
+    session["step2"] = data
+    return jsonify({"success": True}), 200
+
+
+@app.route("/api/session/steps", methods=["GET"])
+def session_steps():
+    """Récupérer les données des étapes d'inscription stockées en session."""
+    return jsonify({
+        "success": True,
+        "step1": session.get("step1", {}),
+        "step2": session.get("step2", {}),
+    }), 200
+
+
 # ── API inscription ───────────────────────────────────────────────────────────
 
 @app.route("/api/inscription", methods=["POST"])
@@ -274,21 +331,13 @@ def inscription():
 
     print(f"[{datetime.now():%H:%M:%S}] ✅ Nouvel inscrit : {prenom} {nom} ({email}) — username: {username} — chien : {chien_nom} ({race}, {poids}kg, {sexe}, né le {date_naissance})")
 
+    session["user_id"] = nouvel_inscrit["id"]
+    session.pop("step1", None)
+    session.pop("step2", None)
+
     return jsonify({
         "success": True,
         "message": f"Bienvenue {prenom} ! 🐾",
-        "id":      nouvel_inscrit["id"],
-        "username": username,
-        "email":   email,
-        "prenom":  prenom,
-        "nom":     nom,
-        "telephone": telephone,
-        "ville":   ville,
-        "chien_nom": chien_nom,
-        "race":    race,
-        "poids":   poids,
-        "dateNaissance": date_naissance,
-        "sexe":    sexe,
     }), 201
 
 
@@ -324,23 +373,11 @@ def login():
 
     print(f"[{datetime.now():%H:%M:%S}] ✅ Connexion : {user['prenom']} {user['nom']} ({email})")
 
+    session["user_id"] = user["id"]
+
     return jsonify({
         "success": True,
         "message": f"Bienvenue {user['prenom']} ! 🐾",
-        "id":      user["id"],
-        "username": user.get("username", ""),
-        "email":   user["email"],
-        "prenom":  user["prenom"],
-        "nom":     user["nom"],
-        "telephone": user.get("telephone", ""),
-        "ville":   user.get("ville", ""),
-        "chien_nom": user["chien_nom"],
-        "race":    user.get("race", ""),
-        "poids":   user.get("poids", 0),
-        "dateNaissance": user.get("dateNaissance", ""),
-        "sexe":    user.get("sexe", ""),
-        "post":    user.get("post", []),
-        "profil_url": user.get("profil_url", ""),
     }), 200
 
 
@@ -381,6 +418,16 @@ def supprimer_inscrit(user_id: int):
     return jsonify({"success": True, "message": f"Inscrit #{user_id} supprimé."})
 
 
+@app.route("/api/users/<int:user_id>/rappels", methods=["GET"])
+def get_rappels(user_id: int):
+    """Récupère les rappels d'un utilisateur depuis inscrits.json"""
+    inscrits = load_inscrits()
+    user = next((u for u in inscrits if u["id"] == user_id), None)
+    if not user:
+        return jsonify({"success": False, "message": "Utilisateur non trouvé."}), 404
+    return jsonify({"success": True, "rappels": user.get("rappel", [])}), 200
+
+
 @app.route("/api/users/<int:user_id>/rappels", methods=["PUT"])
 def update_rappels(user_id: int):
     """Met à jour le champ rappel d'un utilisateur dans inscrits.json"""
@@ -406,29 +453,103 @@ def update_rappels(user_id: int):
     return jsonify({"success": True, "message": "Rappels mis à jour.", "count": len(rappels)}), 200
 
 
-@app.route("/api/users/<int:user_id>/follow", methods=["PUT"])
-def update_follow(user_id: int):
-    """Met à jour les champs abonnes et abonnements d'un utilisateur dans inscrits.json"""
+@app.route("/api/follow", methods=["POST"])
+def follow_user():
+    """Suivre un utilisateur — le serveur gère les deux listes (following + followers)"""
     data = request.get_json(silent=True)
-    if data is None:
+    if not data:
         return jsonify({"success": False, "message": "Données JSON manquantes."}), 400
+
+    user_id = data.get("user_id")
+    target_id = data.get("target_id")
+
+    if not user_id or not target_id:
+        return jsonify({"success": False, "message": "user_id et target_id requis."}), 422
+    if user_id == target_id:
+        return jsonify({"success": False, "message": "Impossible de se suivre soi-même."}), 422
 
     inscrits = load_inscrits()
     user = next((u for u in inscrits if u["id"] == user_id), None)
+    target = next((u for u in inscrits if u["id"] == target_id), None)
 
-    if not user:
+    if not user or not target:
         return jsonify({"success": False, "message": "Utilisateur non trouvé."}), 404
 
-    if "abonnes" in data and isinstance(data["abonnes"], int):
-        user["abonnes"] = data["abonnes"]
-    if "abonnements" in data and isinstance(data["abonnements"], int):
-        user["abonnements"] = data["abonnements"]
+    # Initialiser les listes si absentes
+    if not isinstance(user.get("following"), list):
+        user["following"] = []
+    if not isinstance(target.get("followers"), list):
+        target["followers"] = []
+
+    # Ajouter si pas déjà suivi
+    if target_id not in user["following"]:
+        user["following"].append(target_id)
+    if user_id not in target["followers"]:
+        target["followers"].append(user_id)
 
     save_inscrits(inscrits)
 
-    print(f"[{datetime.now():%H:%M:%S}] 👥 Follow mis à jour pour #{user_id} — abonnés: {user.get('abonnes', 0)}, abonnements: {user.get('abonnements', 0)}")
+    print(f"[{datetime.now():%H:%M:%S}] ➕ #{user_id} suit #{target_id}")
 
-    return jsonify({"success": True, "message": "Follow mis à jour."}), 200
+    return jsonify({
+        "success": True,
+        "is_following": True,
+        "my_following_count": len(user["following"]),
+        "target_followers_count": len(target["followers"])
+    }), 200
+
+
+@app.route("/api/follow", methods=["DELETE"])
+def unfollow_user():
+    """Ne plus suivre un utilisateur — le serveur gère les deux listes"""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"success": False, "message": "Données JSON manquantes."}), 400
+
+    user_id = data.get("user_id")
+    target_id = data.get("target_id")
+
+    if not user_id or not target_id:
+        return jsonify({"success": False, "message": "user_id et target_id requis."}), 422
+
+    inscrits = load_inscrits()
+    user = next((u for u in inscrits if u["id"] == user_id), None)
+    target = next((u for u in inscrits if u["id"] == target_id), None)
+
+    if not user or not target:
+        return jsonify({"success": False, "message": "Utilisateur non trouvé."}), 404
+
+    # Retirer des listes
+    if isinstance(user.get("following"), list) and target_id in user["following"]:
+        user["following"].remove(target_id)
+    if isinstance(target.get("followers"), list) and user_id in target["followers"]:
+        target["followers"].remove(user_id)
+
+    save_inscrits(inscrits)
+
+    print(f"[{datetime.now():%H:%M:%S}] ➖ #{user_id} ne suit plus #{target_id}")
+
+    return jsonify({
+        "success": True,
+        "is_following": False,
+        "my_following_count": len(user.get("following", [])),
+        "target_followers_count": len(target.get("followers", []))
+    }), 200
+
+
+@app.route("/api/users/<int:user_id>/follow-status/<int:target_id>", methods=["GET"])
+def get_follow_status(user_id, target_id):
+    """Vérifie si user_id suit target_id"""
+    inscrits = load_inscrits()
+    user = next((u for u in inscrits if u["id"] == user_id), None)
+    if not user:
+        return jsonify({"success": False, "message": "Utilisateur non trouvé."}), 404
+
+    following = user.get("following", [])
+    return jsonify({
+        "success": True,
+        "is_following": target_id in following
+    }), 200
 
 
 @app.route("/api/search", methods=["GET"])
@@ -458,6 +579,7 @@ def search_users():
                 "prenom": user.get("prenom", ""),
                 "nom": user.get("nom", ""),
                 "sexe": user.get("sexe", ""),
+                "profil_url": user.get("profil_url", ""),
             })
     
     return jsonify({"success": True, "results": results}), 200
@@ -532,15 +654,11 @@ def create_post():
     # ── Sauvegarder dans inscrits.json (champ post[]) ─────────────────
     new_post = {
         "post_id":   uuid.uuid4().hex,
-        "user_id":   user_id,
-        "username":  user.get("username", ""),
-        "chien_nom": user.get("chien_nom", ""),
         "image_url": image_url,
         "caption":   caption,
         "location":  location,
         "timestamp": datetime.now().isoformat(timespec="seconds"),
-        "likes":     0,
-        "comments":  0,
+        "liked_by": [],
     }
     if "post" not in user:
         user["post"] = []
@@ -550,7 +668,15 @@ def create_post():
     print(f"[{datetime.now():%H:%M:%S}] 📸 Nouveau post {new_post['post_id'][:8]} par @{user.get('username', '?')}" +
           (f" avec image" if image_url else ""))
 
-    return jsonify({"success": True, "message": "Post créé !", "post": new_post}), 201
+    # Enrichir la réponse pour le client
+    response_post = dict(new_post)
+    response_post["user_id"]   = user_id
+    response_post["username"]  = user.get("username", "")
+    response_post["chien_nom"] = user.get("chien_nom", "")
+    response_post["profil_url"] = user.get("profil_url", "")
+    response_post["likes"]     = 0
+
+    return jsonify({"success": True, "message": "Post créé !", "post": response_post}), 201
 
 
 @app.route("/api/posts", methods=["GET"])
@@ -562,11 +688,17 @@ def get_posts():
     posts = []
     for u in inscrits:
         for p in u.get("post", []):
-            p["profil_url"] = u.get("profil_url", "")
-            posts.append(p)
+            # Enrichir le post avec les infos du propriétaire (non stockées dans le post)
+            enriched = dict(p)
+            enriched["user_id"]   = u["id"]
+            enriched["username"]  = u.get("username", "")
+            enriched["chien_nom"] = u.get("chien_nom", "")
+            enriched["profil_url"] = u.get("profil_url", "")
+            enriched["likes"]     = len(p.get("liked_by", []))
+            posts.append(enriched)
 
     if user_id:
-        posts = [p for p in posts if p.get("user_id") == user_id]
+        posts = [p for p in posts if p["user_id"] == user_id]
 
     # Trier par date décroissante (plus récent en premier)
     posts.sort(key=lambda p: p.get("timestamp", ""), reverse=True)
@@ -642,13 +774,12 @@ def like_post(post_id: str):
         found_post["liked_by"].append(user_id)
         liked = True
 
-    found_post["likes"] = len(found_post["liked_by"])
     save_inscrits(inscrits)
 
     return jsonify({
         "success": True,
         "liked": liked,
-        "likes": found_post["likes"],
+        "likes": len(found_post["liked_by"]),
         "liked_by": found_post["liked_by"]
     }), 200
 
@@ -681,9 +812,38 @@ def get_likers(post_id: str):
                 "id": u["id"],
                 "username": u.get("username", ""),
                 "chien_nom": u.get("chien_nom", "Chien"),
+                "profil_url": u.get("profil_url", ""),
             })
 
     return jsonify({"success": True, "likers": likers}), 200
+
+
+@app.route("/api/users/batch", methods=["POST"])
+def get_users_batch():
+    """Renvoie les infos basiques pour une liste d'IDs utilisateur."""
+    data = request.get_json(silent=True)
+    if not data or "ids" not in data:
+        return jsonify({"success": False, "message": "Champ 'ids' manquant."}), 400
+
+    ids = data["ids"]
+    if not isinstance(ids, list):
+        return jsonify({"success": False, "message": "'ids' doit être une liste."}), 400
+
+    inscrits = load_inscrits()
+    users_map = {u["id"]: u for u in inscrits}
+
+    result = []
+    for uid in ids:
+        u = users_map.get(uid)
+        if u:
+            result.append({
+                "id": u["id"],
+                "username": u.get("username", ""),
+                "chien_nom": u.get("chien_nom", "Chien"),
+                "profil_url": u.get("profil_url", ""),
+            })
+
+    return jsonify({"success": True, "users": result}), 200
 
 
 @app.route("/api/posts/<post_id>/caption", methods=["PUT"])
@@ -787,7 +947,9 @@ if __name__ == "__main__":
     print("    GET    /api/inscrits         → lister (sans mdp)")
     print("    DELETE /api/inscrits/<id>    → supprimer")
     print("    PUT    /api/users/<id>/rappels → maj rappels")
-    print("    PUT    /api/users/<id>/follow  → maj abonnés/abonnements")
+    print("    POST   /api/follow             → suivre un utilisateur")
+    print("    DELETE /api/follow             → ne plus suivre")
+    print("    GET    /api/users/<id>/follow-status/<target> → statut follow")
     print("    POST   /api/posts              → créer un post (upload image)")
     print("    GET    /api/posts               → lister les posts")
     print("    DELETE /api/posts/<id>          → supprimer un post")

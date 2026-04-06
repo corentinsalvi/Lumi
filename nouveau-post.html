@@ -177,32 +177,86 @@
       color: var(--error);
     }
 
-    /* ── Submit ────────────────────────────────────────────────── */
-    .post-submit-btn {
+    /* ── Slide to Publish ─────────────────────────────────────── */
+    .slide-publish {
+      position: relative;
       width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: var(--radius-sm);
-      background: var(--gold);
-      color: #fff;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
+      height: 56px;
+      border-radius: 14px;
+      background: var(--cream);
+      border: 2px solid var(--border);
       margin-top: 8px;
-      transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
-      box-shadow: 0 4px 20px rgba(201, 168, 76, 0.4);
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
-    .post-submit-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 28px rgba(201, 168, 76, 0.5);
+    .slide-publish-track {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--gold-light), var(--gold));
+      border-radius: 12px;
+      transition: width 0.15s ease;
     }
 
-    .post-submit-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
+    .slide-publish.dragging .slide-publish-track {
+      transition: none;
+    }
+
+    .slide-publish-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+      pointer-events: none;
+      gap: 8px;
+      transition: opacity 0.2s;
+    }
+
+    .slide-publish-thumb {
+      position: absolute;
+      left: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 18px;
+      cursor: grab;
+      z-index: 2;
+      transition: left 0.15s ease, background 0.2s;
+      box-shadow: 0 2px 8px rgba(201, 168, 76, 0.4);
+    }
+
+    .slide-publish.dragging .slide-publish-thumb {
+      transition: none;
+      cursor: grabbing;
+    }
+
+    .slide-publish.done .slide-publish-thumb {
+      background: #27AE60;
+    }
+
+    .slide-publish.done .slide-publish-label {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .slide-publish.done .slide-publish-track {
+      background: #27AE60;
     }
 
     /* ── Flash ─────────────────────────────────────────────────── */
@@ -305,8 +359,18 @@
 
   <script>
     // ── Utilisateur connecté ──────────────────────────────────────────────
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    if (!currentUser.id) window.location.href = '/login.html';
+    let currentUser = {};
+    // Charger l'utilisateur connecté depuis la session
+    (async () => {
+      try {
+        const res = await fetch('/api/me');
+        const data = await res.json();
+        if (!data.success) { window.location.href = '/login.html'; return; }
+        currentUser = data.user;
+      } catch (e) {
+        window.location.href = '/login.html';
+      }
+    })();
 
     // ── Aperçu de l'image ─────────────────────────────────────────────────
     const imageInput = document.getElementById('imageInput');
@@ -442,11 +506,6 @@
         const data = await res.json();
 
         if (data.success) {
-          const cu = JSON.parse(localStorage.getItem('currentUser') || '{}');
-          if (!Array.isArray(cu.post)) cu.post = [];
-          cu.post.push(data.post);
-          localStorage.setItem('currentUser', JSON.stringify(cu));
-
           showFlash('Post publié ! 🐾', 'success');
           setTimeout(() => window.location.href = '/feed', 1000);
         } else {

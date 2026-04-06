@@ -153,8 +153,17 @@ form.addEventListener('submit', async (e) => {
     console.warn('Impossible de vérifier l\'email', err);
   }
 
-  // Stocker dans localStorage
-  localStorage.setItem('step1Data', JSON.stringify(step1Data));
+  // Stocker en session serveur
+  try {
+    await fetch('/api/session/step1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(step1Data),
+    });
+  } catch (err) {
+    showFlash('error', 'Erreur réseau.');
+    return;
+  }
 
   // Naviguer vers l'étape 2
   window.location.href = '/proprietaire.html';
