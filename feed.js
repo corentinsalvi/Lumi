@@ -80,7 +80,11 @@ function renderPostCard(post) {
       </div>
 
       <!-- Image -->
-      ${post.image_url ? `<img src="${post.image_url}" alt="Post" class="post-card-image" loading="lazy" />` : ''}
+      ${post.image_url ? `
+      <div class="post-card-image-wrapper">
+        <img src="${post.image_url}" alt="Post" class="post-card-image" loading="lazy" />
+        <i class="fa-solid fa-heart double-tap-heart"></i>
+      </div>` : ''}
 
       <!-- Actions -->
       <div class="post-card-actions">
@@ -112,7 +116,10 @@ function renderPostCard(post) {
 }
 
 // ── Like / Unlike ───────────────────────────────────────────────────────────
+const _likeLocks = new Set();
 async function toggleLike(btn, postId) {
+  if (_likeLocks.has(postId)) return;
+  _likeLocks.add(postId);
   try {
     const res = await fetch(`/api/posts/${postId}/like`, {
       method: 'PUT',
@@ -138,6 +145,8 @@ async function toggleLike(btn, postId) {
     }
   } catch (err) {
     console.error('Erreur like:', err);
+  } finally {
+    _likeLocks.delete(postId);
   }
 }
 
@@ -190,6 +199,57 @@ async function deletePost(postId) {
     console.error('Erreur suppression:', err);
   }
 }
+
+// ── Double-tap to like ──────────────────────────────────────────────────────
+(function() {
+  function handleDoubleTapLike(e) {
+    // Ignorer si on clique sur un bouton, un lien ou un élément interactif
+    if (e.target.closest('button, a, .post-card-actions, .post-card-likes')) return;
+
+    const card = e.target.closest('.post-card');
+    if (!card) return;
+
+    const postId = card.dataset.postId;
+    const likeBtn = card.querySelector('.post-action-btn');
+    if (!likeBtn || !postId) return;
+
+    // Trigger like/unlike
+    toggleLike(likeBtn, postId);
+
+    // Heart animation on the image wrapper (if present)
+    const wrapper = card.querySelector('.post-card-image-wrapper');
+    if (wrapper) {
+      const heart = wrapper.querySelector('.double-tap-heart');
+      heart.classList.remove('animate');
+      void heart.offsetWidth; // force reflow
+      heart.classList.add('animate');
+    }
+  }
+
+  // Mobile: double-tap via touchend
+  let lastTap = 0;
+  let lastTapTarget = null;
+  document.addEventListener('touchend', function(e) {
+    const card = e.target.closest('.post-card');
+    if (!card) { lastTap = 0; return; }
+
+    const now = Date.now();
+    if (now - lastTap < 300 && lastTapTarget === card) {
+      e.preventDefault();
+      handleDoubleTapLike(e);
+      lastTap = 0;
+      lastTapTarget = null;
+    } else {
+      lastTap = now;
+      lastTapTarget = card;
+    }
+  });
+
+  // Desktop: double-click
+  document.addEventListener('dblclick', function(e) {
+    handleDoubleTapLike(e);
+  });
+})();
 
 // ── Init ────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', initFeed);
