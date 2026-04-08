@@ -123,8 +123,9 @@ async function toggleLike(btn, postId) {
   try {
     const res = await fetch(`/api/posts/${postId}/like`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: currentUser.id })
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     const data = await res.json();
 
@@ -188,7 +189,9 @@ async function deletePost(postId) {
   if (!confirm('Supprimer ce post ?')) return;
 
   try {
-    const res = await fetch(`/api/posts/${postId}`, { method: 'DELETE' });
+    const res = await fetch(`/api/posts/${postId}`, {
+      method: 'DELETE'
+    });
     const data = await res.json();
 
     if (data.success) {

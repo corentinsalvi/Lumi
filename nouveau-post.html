@@ -360,7 +360,7 @@
   <script>
     // ── Utilisateur connecté ──────────────────────────────────────────────
     let currentUser = {};
-    // Charger l'utilisateur connecté depuis la session
+    // Charger l'utilisateur connecté depuis le cookie JWT
     (async () => {
       try {
         const res = await fetch('/api/me');
@@ -495,7 +495,6 @@
     // ── Soumission du formulaire ────────────────────────────────────────────
     async function submitPost() {
       const formData = new FormData(document.getElementById('postForm'));
-      formData.set('user_id', currentUser.id);
 
       try {
         const res = await fetch('/api/posts', {

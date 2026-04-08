@@ -158,9 +158,10 @@ async function toggleFollow() {
   try {
     const res = await fetch('/api/follow', {
       method: method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
-        user_id: currentUser.id,
         target_id: parseInt(publicUserId)
       })
     });

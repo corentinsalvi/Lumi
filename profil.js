@@ -303,7 +303,9 @@ async function saveCaption() {
   try {
     const res = await fetch(`/api/posts/${currentPostId}/caption`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({ caption })
     });
     const data = await res.json();
@@ -331,7 +333,9 @@ async function deleteMyPost() {
   if (!confirm('Supprimer cette publication ?')) return;
 
   try {
-    const res = await fetch(`/api/posts/${currentPostId}`, { method: 'DELETE' });
+    const res = await fetch(`/api/posts/${currentPostId}`, {
+      method: 'DELETE'
+    });
     const data = await res.json();
 
     if (data.success) {

@@ -68,7 +68,9 @@ async function saveVaccines() {
   try {
     const res = await fetch(`/api/users/${currentUser.id}/rappels`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({ rappels: vaccinesCache })
     });
     const data = await res.json();

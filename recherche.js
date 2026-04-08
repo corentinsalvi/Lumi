@@ -97,9 +97,10 @@ async function followUser(event, userId) {
   try {
     const res = await fetch('/api/follow', {
       method: method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
-        user_id: myId,
         target_id: parseInt(userId)
       })
     });

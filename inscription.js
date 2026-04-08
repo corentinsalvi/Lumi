@@ -155,11 +155,16 @@ form.addEventListener('submit', async (e) => {
 
   // Stocker en session serveur
   try {
-    await fetch('/api/session/step1', {
+    const stepRes = await fetch('/api/session/step1', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(step1Data),
     });
+    const stepResult = await stepRes.json();
+    if (!stepResult.success) {
+      showFlash('error', 'Erreur lors de la sauvegarde des données.');
+      return;
+    }
   } catch (err) {
     showFlash('error', 'Erreur réseau.');
     return;

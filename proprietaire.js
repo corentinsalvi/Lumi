@@ -85,8 +85,8 @@ form.addEventListener('submit', async (e) => {
   // Vérifier les données de l'étape 1 en session serveur
   let step1Data;
   try {
-    const res = await fetch('/api/session/steps');
-    const stepsData = await res.json();
+    const stepsRes = await fetch('/api/session/steps');
+    const stepsData = await stepsRes.json();
     step1Data = stepsData.step1 || {};
   } catch (err) {
     step1Data = {};
@@ -107,11 +107,16 @@ form.addEventListener('submit', async (e) => {
 
   // Stocker en session serveur
   try {
-    await fetch('/api/session/step2', {
+    const stepRes = await fetch('/api/session/step2', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(step2Data),
     });
+    const stepResult = await stepRes.json();
+    if (!stepResult.success) {
+      showFlash('error', 'Erreur lors de la sauvegarde des données.');
+      return;
+    }
   } catch (err) {
     showFlash('error', 'Erreur réseau.');
     return;

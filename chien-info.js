@@ -6,13 +6,14 @@ const btnText   = submitBtn.querySelector('.btn-text');
 const btnLoader = document.getElementById('btnLoader');
 const btnBack   = document.getElementById('btnBack');
 
-// ── Récupérer et afficher le nom du chien depuis la session serveur ──────────
-(async () => {
+// ── Récupérer et afficher le nom du chien depuis la session serveur ────────
+(async function() {
   try {
     const res = await fetch('/api/session/steps');
     const data = await res.json();
-    if (data.step1 && data.step1.chien_nom) {
-      document.getElementById('dogName').textContent = data.step1.chien_nom;
+    const step1 = data.step1 || {};
+    if (step1.chien_nom) {
+      document.getElementById('dogName').textContent = step1.chien_nom;
     }
   } catch (err) {}
 })();
@@ -130,11 +131,11 @@ form.addEventListener('submit', async (e) => {
   let step1Data, step2Data;
   try {
     const stepsRes = await fetch('/api/session/steps');
-    const stepsJson = await stepsRes.json();
-    step1Data = stepsJson.step1 || {};
-    step2Data = stepsJson.step2 || {};
+    const stepsData = await stepsRes.json();
+    step1Data = stepsData.step1 || {};
+    step2Data = stepsData.step2 || {};
   } catch (err) {
-    showFlash('error', 'Erreur réseau.');
+    showFlash('error', 'Erreur de lecture des données.');
     return;
   }
 

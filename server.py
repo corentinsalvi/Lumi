@@ -1,12 +1,13 @@
 """
-Odoggy — Serveur complet
-==========================
+Odoggy — Serveur complet (JWT Auth)
+=====================================
 - Sert les fichiers statiques (HTML, CSS, JS)
 - Gère l'API d'inscription
 - Stocke les inscrits dans inscrits.json
+- Authentification JWT Bearer Token
 
 Installation :
-    pip install flask flask-cors bcrypt
+    pip install flask flask-cors bcrypt pyjwt
 
 Lancement :
     python server.py
@@ -21,9 +22,10 @@ import uuid
 import hashlib
 import secrets
 import string
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory, session
+from functools import wraps
+from flask import Flask, request, jsonify, send_from_directory, g, session, make_response
 from flask_cors import CORS
 
 try:
@@ -34,6 +36,12 @@ except ImportError:
     print("⚠  bcrypt non installé — hash SHA-256 utilisé à la place.")
     print("   Pour un hash sécurisé : pip install bcrypt")
 
+try:
+    import jwt
+except ImportError:
+    print("❌  PyJWT non installé — pip install pyjwt")
+    raise
+
 # ── Config ───────────────────────────────────────────────────────────────────
 BASE_DIR    = Path(__file__).parent
 DATA_FILE   = BASE_DIR / "inscrits.json"
@@ -41,9 +49,13 @@ UPLOAD_DIR  = BASE_DIR / "static" / "uploads"
 ALLOWED_EXT = {".jpg", ".jpeg", ".png"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 Mo
 
+JWT_SECRET      = os.environ.get("JWT_SECRET", "dev-secret-change-me-in-production!!")
+JWT_ALGO        = "HS256"
+JWT_EXP_SECONDS = 60 * 60 * 24 * 7  # 7 jours
+
 app = Flask(__name__, static_folder=str(BASE_DIR / "static"))
-app.secret_key = secrets.token_hex(32)
-CORS(app)
+app.secret_key = os.environ.get("FLASK_SECRET", "flask-session-dev-key-change-me!!")
+CORS(app, supports_credentials=True)
 
 
 # ── Servir les fichiers statiques ────────────────────────────────────────────
@@ -97,6 +109,14 @@ def nouveau_post_page():
 def static_files(filename):
     """Sert style.css, inscription.js, login.html, et tout autre fichier du dossier"""
     return send_from_directory(BASE_DIR, filename)
+
+
+@app.after_request
+def add_no_cache(response):
+    """Désactiver le cache pour les fichiers JS/CSS/HTML en dev."""
+    if request.path.endswith(('.js', '.css', '.html')):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return response
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -166,49 +186,113 @@ def generate_unique_username(inscrits: list) -> str:
             return username
 
 
-# ── API Session / Auth ────────────────────────────────────────────────────────
+# ── JWT helpers ──────────────────────────────────────────────────────────────
+
+def create_access_token(user_id: int) -> str:
+    """Créer un JWT avec claims sub, iat, exp."""
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(user_id),
+        "iat": now,
+        "exp": now + timedelta(seconds=JWT_EXP_SECONDS),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
+
+
+def decode_access_token(token: str) -> dict:
+    """Décoder et valider un JWT. Lève une exception si invalide/expiré."""
+    return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
+
+
+def _set_auth_cookie(response, token):
+    """Place le JWT dans un cookie httpOnly."""
+    response.set_cookie(
+        "access_token",
+        token,
+        httponly=True,
+        samesite="Lax",
+        max_age=JWT_EXP_SECONDS,
+        path="/",
+    )
+    return response
+
+
+def _clear_auth_cookie(response):
+    """Supprime le cookie JWT."""
+    response.set_cookie("access_token", "", httponly=True, samesite="Lax", max_age=0, path="/")
+    return response
+
+
+def require_auth(f):
+    """Decorator : lit le JWT depuis le cookie httpOnly, charge l'utilisateur dans g."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.cookies.get("access_token", "")
+
+        if not token:
+            return jsonify({"success": False, "message": "Token manquant."}), 401
+
+        try:
+            payload = decode_access_token(token)
+        except jwt.ExpiredSignatureError:
+            return jsonify({"success": False, "message": "Token expiré."}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"success": False, "message": "Token invalide."}), 401
+
+        try:
+            user_id = int(payload.get("sub"))
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "message": "Token invalide (sub)."}), 401
+
+        inscrits = load_inscrits()
+        user = next((u for u in inscrits if u["id"] == user_id), None)
+        if not user:
+            return jsonify({"success": False, "message": "Utilisateur introuvable."}), 401
+
+        g.current_user = user
+        g.current_user_id = user_id
+
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ── API Auth ─────────────────────────────────────────────────────────────────
 
 @app.route("/api/me", methods=["GET"])
+@require_auth
 def get_me():
-    """Retourne les données de l'utilisateur connecté via la session."""
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify({"success": False, "message": "Non connecté."}), 401
-
-    inscrits = load_inscrits()
-    user = next((u for u in inscrits if u["id"] == user_id), None)
-    if not user:
-        session.clear()
-        return jsonify({"success": False, "message": "Utilisateur introuvable."}), 401
-
-    user_data = {k: v for k, v in user.items() if k != "mot_de_passe"}
+    """Retourne les données de l'utilisateur connecté via le token JWT."""
+    user_data = {k: v for k, v in g.current_user.items() if k != "mot_de_passe"}
     return jsonify({"success": True, "user": user_data}), 200
 
 
 @app.route("/api/logout", methods=["POST"])
 def logout():
-    """Déconnexion — supprime la session."""
-    session.clear()
-    return jsonify({"success": True, "message": "Déconnecté."}), 200
+    """Déconnexion — supprime le cookie JWT."""
+    resp = make_response(jsonify({"success": True, "message": "Déconnecté."}))
+    _clear_auth_cookie(resp)
+    return resp, 200
 
+
+# ── API Session (étapes d'inscription) ────────────────────────────────────────
 
 @app.route("/api/session/step1", methods=["POST"])
 def session_step1():
-    """Stocker les données de l'étape 1 d'inscription en session."""
+    """Stocker les données de l'étape 1 en session Flask."""
     data = request.get_json(silent=True)
     if not data:
-        return jsonify({"success": False}), 400
-    session["step1"] = data
+        return jsonify({"success": False, "message": "Données JSON manquantes."}), 400
+    session["inscription_step1"] = data
     return jsonify({"success": True}), 200
 
 
 @app.route("/api/session/step2", methods=["POST"])
 def session_step2():
-    """Stocker les données de l'étape 2 d'inscription en session."""
+    """Stocker les données de l'étape 2 en session Flask."""
     data = request.get_json(silent=True)
     if not data:
-        return jsonify({"success": False}), 400
-    session["step2"] = data
+        return jsonify({"success": False, "message": "Données JSON manquantes."}), 400
+    session["inscription_step2"] = data
     return jsonify({"success": True}), 200
 
 
@@ -217,8 +301,8 @@ def session_steps():
     """Récupérer les données des étapes d'inscription stockées en session."""
     return jsonify({
         "success": True,
-        "step1": session.get("step1", {}),
-        "step2": session.get("step2", {}),
+        "step1": session.get("inscription_step1", {}),
+        "step2": session.get("inscription_step2", {}),
     }), 200
 
 
@@ -331,14 +415,21 @@ def inscription():
 
     print(f"[{datetime.now():%H:%M:%S}] ✅ Nouvel inscrit : {prenom} {nom} ({email}) — username: {username} — chien : {chien_nom} ({race}, {poids}kg, {sexe}, né le {date_naissance})")
 
-    session["user_id"] = nouvel_inscrit["id"]
-    session.pop("step1", None)
-    session.pop("step2", None)
+    # Générer le JWT
+    access_token = create_access_token(nouvel_inscrit["id"])
+    user_data = {k: v for k, v in nouvel_inscrit.items() if k != "mot_de_passe"}
 
-    return jsonify({
+    # Nettoyer les données d'inscription en session
+    session.pop("inscription_step1", None)
+    session.pop("inscription_step2", None)
+
+    resp = make_response(jsonify({
         "success": True,
         "message": f"Bienvenue {prenom} ! 🐾",
-    }), 201
+        "user": user_data,
+    }), 201)
+    _set_auth_cookie(resp, access_token)
+    return resp
 
 
 @app.route("/api/login", methods=["POST"])
@@ -373,28 +464,34 @@ def login():
 
     print(f"[{datetime.now():%H:%M:%S}] ✅ Connexion : {user['prenom']} {user['nom']} ({email})")
 
-    session["user_id"] = user["id"]
+    access_token = create_access_token(user["id"])
+    user_data = {k: v for k, v in user.items() if k != "mot_de_passe"}
 
-    return jsonify({
+    resp = make_response(jsonify({
         "success": True,
         "message": f"Bienvenue {user['prenom']} ! 🐾",
-    }), 200
+        "user": user_data,
+    }), 200)
+    _set_auth_cookie(resp, access_token)
+    return resp
 
+
+# ── API Profil public / Recherche (publiques) ────────────────────────────────
 
 @app.route("/api/user-profile", methods=["GET"])
 def user_profile():
-    """Récupère le profil de l'utilisateur actuellement connecté"""
+    """Récupère le profil d'un utilisateur par ID (public)"""
     user_id = request.args.get("id", type=int)
-    
+
     if not user_id:
         return jsonify({"success": False, "message": "ID utilisateur manquant."}), 400
-    
+
     inscrits = load_inscrits()
     user = next((u for u in inscrits if u["id"] == user_id), None)
-    
+
     if not user:
         return jsonify({"success": False, "message": "Utilisateur non trouvé."}), 404
-    
+
     # Retourner les données sans le mot de passe
     user_data = {k: v for k, v in user.items() if k != "mot_de_passe"}
     return jsonify({"success": True, "data": user_data}), 200
@@ -408,7 +505,10 @@ def liste_inscrits():
 
 
 @app.route("/api/inscrits/<int:user_id>", methods=["DELETE"])
+@require_auth
 def supprimer_inscrit(user_id: int):
+    if g.current_user_id != user_id:
+        return jsonify({"success": False, "message": "Non autorisé."}), 403
     inscrits = load_inscrits()
     avant = len(inscrits)
     inscrits = [u for u in inscrits if u["id"] != user_id]
@@ -418,9 +518,46 @@ def supprimer_inscrit(user_id: int):
     return jsonify({"success": True, "message": f"Inscrit #{user_id} supprimé."})
 
 
+@app.route("/api/search", methods=["GET"])
+def search_users():
+    """Rechercher des utilisateurs par username, nom du chien ou nom du propriétaire (public)"""
+    query = (request.args.get("q") or "").strip().lower()
+
+    if not query or len(query) < 2:
+        return jsonify({"success": False, "message": "Requête de recherche trop courte."}), 400
+
+    inscrits = load_inscrits()
+    results = []
+
+    for user in inscrits:
+        if (
+            query in user.get("username", "").lower() or
+            query in user.get("chien_nom", "").lower() or
+            query in user.get("prenom", "").lower() or
+            query in user.get("nom", "").lower()
+        ):
+            results.append({
+                "id": user["id"],
+                "username": user.get("username", ""),
+                "chien_nom": user.get("chien_nom", "Chien"),
+                "race": user.get("race", "Race inconnue"),
+                "prenom": user.get("prenom", ""),
+                "nom": user.get("nom", ""),
+                "sexe": user.get("sexe", ""),
+                "profil_url": user.get("profil_url", ""),
+            })
+
+    return jsonify({"success": True, "results": results}), 200
+
+
+# ── API Rappels (protégé) ────────────────────────────────────────────────────
+
 @app.route("/api/users/<int:user_id>/rappels", methods=["GET"])
+@require_auth
 def get_rappels(user_id: int):
     """Récupère les rappels d'un utilisateur depuis inscrits.json"""
+    if g.current_user_id != user_id:
+        return jsonify({"success": False, "message": "Non autorisé."}), 403
     inscrits = load_inscrits()
     user = next((u for u in inscrits if u["id"] == user_id), None)
     if not user:
@@ -429,8 +566,12 @@ def get_rappels(user_id: int):
 
 
 @app.route("/api/users/<int:user_id>/rappels", methods=["PUT"])
+@require_auth
 def update_rappels(user_id: int):
     """Met à jour le champ rappel d'un utilisateur dans inscrits.json"""
+    if g.current_user_id != user_id:
+        return jsonify({"success": False, "message": "Non autorisé."}), 403
+
     data = request.get_json(silent=True)
     if data is None or "rappels" not in data:
         return jsonify({"success": False, "message": "Données JSON manquantes (champ 'rappels')."}), 400
@@ -453,18 +594,21 @@ def update_rappels(user_id: int):
     return jsonify({"success": True, "message": "Rappels mis à jour.", "count": len(rappels)}), 200
 
 
+# ── API Follow (protégé) ─────────────────────────────────────────────────────
+
 @app.route("/api/follow", methods=["POST"])
+@require_auth
 def follow_user():
     """Suivre un utilisateur — le serveur gère les deux listes (following + followers)"""
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"success": False, "message": "Données JSON manquantes."}), 400
 
-    user_id = data.get("user_id")
+    user_id = g.current_user_id
     target_id = data.get("target_id")
 
-    if not user_id or not target_id:
-        return jsonify({"success": False, "message": "user_id et target_id requis."}), 422
+    if not target_id:
+        return jsonify({"success": False, "message": "target_id requis."}), 422
     if user_id == target_id:
         return jsonify({"success": False, "message": "Impossible de se suivre soi-même."}), 422
 
@@ -500,17 +644,18 @@ def follow_user():
 
 
 @app.route("/api/follow", methods=["DELETE"])
+@require_auth
 def unfollow_user():
     """Ne plus suivre un utilisateur — le serveur gère les deux listes"""
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"success": False, "message": "Données JSON manquantes."}), 400
 
-    user_id = data.get("user_id")
+    user_id = g.current_user_id
     target_id = data.get("target_id")
 
-    if not user_id or not target_id:
-        return jsonify({"success": False, "message": "user_id et target_id requis."}), 422
+    if not target_id:
+        return jsonify({"success": False, "message": "target_id requis."}), 422
 
     inscrits = load_inscrits()
     user = next((u for u in inscrits if u["id"] == user_id), None)
@@ -539,7 +684,7 @@ def unfollow_user():
 
 @app.route("/api/users/<int:user_id>/follow-status/<int:target_id>", methods=["GET"])
 def get_follow_status(user_id, target_id):
-    """Vérifie si user_id suit target_id"""
+    """Vérifie si user_id suit target_id (public)"""
     inscrits = load_inscrits()
     user = next((u for u in inscrits if u["id"] == user_id), None)
     if not user:
@@ -552,57 +697,22 @@ def get_follow_status(user_id, target_id):
     }), 200
 
 
-@app.route("/api/search", methods=["GET"])
-def search_users():
-    """Rechercher des utilisateurs par username, nom du chien ou nom du propriétaire"""
-    query = (request.args.get("q") or "").strip().lower()
-    
-    if not query or len(query) < 2:
-        return jsonify({"success": False, "message": "Requête de recherche trop courte."}), 400
-    
-    inscrits = load_inscrits()
-    results = []
-    
-    for user in inscrits:
-        # Vérifier si la requête correspond à l'username, chien_nom, prenom ou nom
-        if (
-            query in user.get("username", "").lower() or
-            query in user.get("chien_nom", "").lower() or
-            query in user.get("prenom", "").lower() or
-            query in user.get("nom", "").lower()
-        ):
-            results.append({
-                "id": user["id"],
-                "username": user.get("username", ""),
-                "chien_nom": user.get("chien_nom", "Chien"),
-                "race": user.get("race", "Race inconnue"),
-                "prenom": user.get("prenom", ""),
-                "nom": user.get("nom", ""),
-                "sexe": user.get("sexe", ""),
-                "profil_url": user.get("profil_url", ""),
-            })
-    
-    return jsonify({"success": True, "results": results}), 200
-
-
 # ── API Upload d'image / Posts ───────────────────────────────────────────────
 
 @app.route("/api/posts", methods=["POST"])
+@require_auth
 def create_post():
     """Créer un post avec upload d'image sécurisé.
 
     Attend un formulaire multipart avec :
-      - user_id  (int)   : identifiant de l'utilisateur
       - caption  (str)   : légende du post (optionnel)
       - location (str)   : lieu (optionnel)
       - image    (file)  : fichier image (.jpg, .jpeg, .png)
+    Le user_id est extrait du JWT (g.current_user_id).
     """
-    # ── Récupérer l'user_id ─────────────────────────────────────────────
-    user_id = request.form.get("user_id", type=int)
-    if not user_id:
-        return jsonify({"success": False, "message": "user_id manquant."}), 400
+    user_id = g.current_user_id
 
-    # Vérifier que l'utilisateur existe
+    # Recharger l'utilisateur depuis le fichier (token vérifié par @require_auth)
     inscrits = load_inscrits()
     user = next((u for u in inscrits if u["id"] == user_id), None)
     if not user:
@@ -681,7 +791,7 @@ def create_post():
 
 @app.route("/api/posts", methods=["GET"])
 def get_posts():
-    """Récupérer les posts depuis inscrits.json, optionnellement filtrés par user_id."""
+    """Récupérer les posts depuis inscrits.json, optionnellement filtrés par user_id (public)."""
     user_id = request.args.get("user_id", type=int)
     inscrits = load_inscrits()
 
@@ -707,8 +817,9 @@ def get_posts():
 
 
 @app.route("/api/posts/<post_id>", methods=["DELETE"])
+@require_auth
 def delete_post(post_id: str):
-    """Supprimer un post et son image associée."""
+    """Supprimer un post et son image associée. Seul le propriétaire peut supprimer."""
     inscrits = load_inscrits()
     found_post = None
     found_user = None
@@ -725,6 +836,10 @@ def delete_post(post_id: str):
     if not found_post:
         return jsonify({"success": False, "message": "Post introuvable."}), 404
 
+    # Vérifier que le post appartient à l'utilisateur courant
+    if found_user["id"] != g.current_user_id:
+        return jsonify({"success": False, "message": "Non autorisé à supprimer ce post."}), 403
+
     # Supprimer l'image du disque si elle existe
     if found_post.get("image_url"):
         image_path = BASE_DIR / found_post["image_url"].lstrip("/")
@@ -739,15 +854,10 @@ def delete_post(post_id: str):
 
 
 @app.route("/api/posts/<post_id>/like", methods=["PUT"])
+@require_auth
 def like_post(post_id: str):
-    """Toggle like sur un post. Ajoute/retire le user_id dans liked_by."""
-    data = request.get_json(silent=True)
-    if not data or "user_id" not in data:
-        return jsonify({"success": False, "message": "user_id manquant."}), 400
-
-    user_id = data["user_id"]
-    if not isinstance(user_id, int):
-        return jsonify({"success": False, "message": "user_id invalide."}), 400
+    """Toggle like sur un post. Utilise le user_id du token JWT."""
+    user_id = g.current_user_id
 
     inscrits = load_inscrits()
     found_post = None
@@ -786,7 +896,7 @@ def like_post(post_id: str):
 
 @app.route("/api/posts/<post_id>/likers", methods=["GET"])
 def get_likers(post_id: str):
-    """Récupérer la liste des utilisateurs qui ont liké un post."""
+    """Récupérer la liste des utilisateurs qui ont liké un post (public)."""
     inscrits = load_inscrits()
     found_post = None
 
@@ -820,7 +930,7 @@ def get_likers(post_id: str):
 
 @app.route("/api/users/batch", methods=["POST"])
 def get_users_batch():
-    """Renvoie les infos basiques pour une liste d'IDs utilisateur."""
+    """Renvoie les infos basiques pour une liste d'IDs utilisateur (public)."""
     data = request.get_json(silent=True)
     if not data or "ids" not in data:
         return jsonify({"success": False, "message": "Champ 'ids' manquant."}), 400
@@ -847,8 +957,9 @@ def get_users_batch():
 
 
 @app.route("/api/posts/<post_id>/caption", methods=["PUT"])
+@require_auth
 def update_caption(post_id: str):
-    """Modifier la légende d'un post."""
+    """Modifier la légende d'un post. Seul le propriétaire peut modifier."""
     data = request.get_json(silent=True)
     if data is None or "caption" not in data:
         return jsonify({"success": False, "message": "Champ 'caption' manquant."}), 400
@@ -857,17 +968,23 @@ def update_caption(post_id: str):
 
     inscrits = load_inscrits()
     found_post = None
+    found_user = None
 
     for u in inscrits:
         for p in u.get("post", []):
             if p.get("post_id") == post_id:
                 found_post = p
+                found_user = u
                 break
         if found_post:
             break
 
     if not found_post:
         return jsonify({"success": False, "message": "Post introuvable."}), 404
+
+    # Vérifier que le post appartient à l'utilisateur courant
+    if found_user["id"] != g.current_user_id:
+        return jsonify({"success": False, "message": "Non autorisé à modifier ce post."}), 403
 
     found_post["caption"] = caption
     save_inscrits(inscrits)
@@ -877,8 +994,12 @@ def update_caption(post_id: str):
 
 
 @app.route("/api/users/<int:user_id>/profile", methods=["POST"])
+@require_auth
 def update_profile(user_id: int):
-    """Modifier la photo de profil et/ou le username."""
+    """Modifier la photo de profil et/ou le username. Seul le propriétaire peut modifier."""
+    if g.current_user_id != user_id:
+        return jsonify({"success": False, "message": "Non autorisé."}), 403
+
     inscrits = load_inscrits()
     user = next((u for u in inscrits if u["id"] == user_id), None)
     if not user:
@@ -932,26 +1053,38 @@ def update_profile(user_id: int):
 # ── Lancement ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 54)
-    print("  🐾  Odoggy — Serveur complet")
+    print("  🐾  Odoggy — Serveur complet (JWT Auth)")
     print("=" * 54)
     print(f"  📂  Dossier servi  : {BASE_DIR}")
     print(f"  📄  Fichier JSON   : {DATA_FILE}")
     print(f"  📷  Uploads dir    : {UPLOAD_DIR}")
     print(f"  🔒  Hash bcrypt    : {'Oui' if USE_BCRYPT else 'Non (pip install bcrypt)'}")
+    print(f"  🔑  JWT algo       : {JWT_ALGO}")
     print()
     print("  ✅  Ouvrez votre navigateur sur :")
     print("      http://localhost:5000")
     print()
     print("  Routes API :")
-    print("    POST   /api/inscription      → inscrire")
-    print("    GET    /api/inscrits         → lister (sans mdp)")
-    print("    DELETE /api/inscrits/<id>    → supprimer")
-    print("    PUT    /api/users/<id>/rappels → maj rappels")
-    print("    POST   /api/follow             → suivre un utilisateur")
-    print("    DELETE /api/follow             → ne plus suivre")
+    print("    POST   /api/inscription         → inscrire + JWT")
+    print("    POST   /api/login               → connexion + JWT")
+    print("    GET    /api/me                   → profil (🔒 JWT)")
+    print("    POST   /api/logout              → déconnexion (no-op)")
+    print("    GET    /api/inscrits            → lister (sans mdp)")
+    print("    DELETE /api/inscrits/<id>       → supprimer (🔒 JWT)")
+    print("    GET    /api/users/<id>/rappels  → rappels (🔒 JWT)")
+    print("    PUT    /api/users/<id>/rappels  → maj rappels (🔒 JWT)")
+    print("    POST   /api/follow              → suivre (🔒 JWT)")
+    print("    DELETE /api/follow              → ne plus suivre (🔒 JWT)")
     print("    GET    /api/users/<id>/follow-status/<target> → statut follow")
-    print("    POST   /api/posts              → créer un post (upload image)")
+    print("    POST   /api/posts               → créer post (🔒 JWT)")
     print("    GET    /api/posts               → lister les posts")
-    print("    DELETE /api/posts/<id>          → supprimer un post")
+    print("    DELETE /api/posts/<id>          → supprimer post (🔒 JWT)")
+    print("    PUT    /api/posts/<id>/like     → like/unlike (🔒 JWT)")
+    print("    PUT    /api/posts/<id>/caption  → modifier légende (🔒 JWT)")
+    print("    GET    /api/posts/<id>/likers   → likers")
+    print("    POST   /api/users/<id>/profile  → modifier profil (🔒 JWT)")
+    print("    GET    /api/user-profile?id=    → profil public")
+    print("    GET    /api/search?q=           → recherche")
+    print("    POST   /api/users/batch         → infos batch")
     print("=" * 54)
     app.run(host="0.0.0.0", debug=True, port=5000)
